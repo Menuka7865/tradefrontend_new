@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:chilawtraders/screens/web_view/home_web.dart';
 import 'package:chilawtraders/serverconection/admin_backend_services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -516,7 +514,7 @@ class _AdminDashboardMobileState extends State<AdminDashboardMobile> {
               child: Column(
                 children: [
                   _drawerItem(Icons.dashboard, "Dashboard", 0),
-                  _drawerItem(Icons.settings, "Settings", 1),
+                  _drawerItem(Icons.people, "Collectors", 1),
                 ],
               ),
             ),
@@ -573,7 +571,11 @@ class _AdminDashboardMobileState extends State<AdminDashboardMobile> {
             currentIndex = index;
           });
           Navigator.pop(context);
-          print('Navigate to $title');
+           if (title == "Dashboard") {
+            Navigator.pushReplacementNamed(context, '/AdminDashboardMobile');
+          } else if (title == "Collectors") {
+             Navigator.pushReplacementNamed(context, '/CollectorManagementMobile');
+          }
         },
       ),
     );

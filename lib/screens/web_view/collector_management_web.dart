@@ -21,12 +21,12 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
   List<Map<String, dynamic>> allCollectors = [];
   List<Map<String, dynamic>> filteredCollectors = [];
   TextEditingController searchController = TextEditingController();
-  
+
   // Add collector form controllers
   TextEditingController usernameController = TextEditingController();
   TextEditingController emailController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
-  
+
   // Loading states
   bool isDashboardLoading = true;
   bool isCollectorsLoading = true;
@@ -55,17 +55,20 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
       final token = prefs.getString("auth_token");
 
       if (token == null || token.isEmpty) {
-        _showErrorSnackBar("No authentication token found. Please log in again.");
+        _showErrorSnackBar(
+          "No authentication token found. Please log in again.",
+        );
         _redirectToLogin();
         return;
       }
 
       // Validate token by making a test API call
       final response = await AdminBackendServices.getDashboardStats();
-      
-      if (response['status'] == false && 
+
+      if (response['status'] == false &&
           (response['Message']?.toString().contains('Unauthorized') == true ||
-           response['Message']?.toString().contains('Invalid token') == true)) {
+              response['Message']?.toString().contains('Invalid token') ==
+                  true)) {
         _showErrorSnackBar("Session expired. Please log in again.");
         _redirectToLogin();
         return;
@@ -87,10 +90,7 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
 
   /// Initialize dashboard by loading all necessary data
   Future<void> _initializeDashboard() async {
-    await Future.wait([
-      _loadDashboardStats(),
-      _loadCollectors(),
-    ]);
+    await Future.wait([_loadDashboardStats(), _loadCollectors()]);
   }
 
   /// Load dashboard statistics from backend
@@ -102,18 +102,19 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
 
       // Use AdminBackendServices to get collector stats
       final response = await AdminBackendServices.getCollectorStats();
-      
+
       print("Collector Stats API Response: $response");
 
       // Check for token validation issues
-      if (response['status'] == false && 
+      if (response['status'] == false &&
           (response['Message']?.toString().contains('Unauthorized') == true ||
-           response['Message']?.toString().contains('Invalid token') == true)) {
+              response['Message']?.toString().contains('Invalid token') ==
+                  true)) {
         _showErrorSnackBar("Session expired. Please log in again.");
         _redirectToLogin();
         return;
       }
-      
+
       if (response['status'] == true && response['data'] != null) {
         final data = response['data'];
         setState(() {
@@ -127,7 +128,10 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
         // Handle different response structures or set default values
         setState(() {
           totalCollectors = allCollectors.length.toString();
-          activeCollectors = allCollectors.where((c) => c['status'] == 'active').length.toString();
+          activeCollectors = allCollectors
+              .where((c) => c['status'] == 'active')
+              .length
+              .toString();
           recentlyAdded = "0";
           totalAssignments = "0";
           isDashboardLoading = false;
@@ -136,11 +140,14 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
     } catch (e) {
       print('Error loading collector stats: $e');
       _showErrorSnackBar('Error loading dashboard data: $e');
-      
+
       // Set default values on error
       setState(() {
         totalCollectors = allCollectors.length.toString();
-        activeCollectors = allCollectors.where((c) => c['status'] == 'active').length.toString();
+        activeCollectors = allCollectors
+            .where((c) => c['status'] == 'active')
+            .length
+            .toString();
         recentlyAdded = "0";
         totalAssignments = "0";
         isDashboardLoading = false;
@@ -157,46 +164,57 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
 
       // Use AdminBackendServices to get collectors
       final response = await AdminBackendServices.getCollectors();
-      
+
       print("Collectors API Response: $response");
 
       // Check for token validation issues
-      if (response['status'] == false && 
+      if (response['status'] == false &&
           (response['Message']?.toString().contains('Unauthorized') == true ||
-           response['Message']?.toString().contains('Invalid token') == true)) {
+              response['Message']?.toString().contains('Invalid token') ==
+                  true)) {
         _showErrorSnackBar("Session expired. Please log in again.");
         _redirectToLogin();
         return;
       }
-      
+
       if (response['status'] == true) {
         setState(() {
           // Handle different possible response structures
-          var responseData = response['data'] ?? response['collectors'] ?? response['Data'];
-          
+          var responseData =
+              response['data'] ?? response['collectors'] ?? response['Data'];
+
           if (responseData is List) {
             allCollectors = List<Map<String, dynamic>>.from(responseData);
-          } else if (responseData is Map && responseData.containsKey('collectors')) {
-            allCollectors = List<Map<String, dynamic>>.from(responseData['collectors']);
+          } else if (responseData is Map &&
+              responseData.containsKey('collectors')) {
+            allCollectors = List<Map<String, dynamic>>.from(
+              responseData['collectors'],
+            );
           } else {
             // If data is directly in response
-            allCollectors = List<Map<String, dynamic>>.from(response['Data'] ?? []);
+            allCollectors = List<Map<String, dynamic>>.from(
+              response['Data'] ?? [],
+            );
           }
-          
+
           // Update total collectors count after loading
           totalCollectors = allCollectors.length.toString();
-          
+
           _filterCollectors();
           isCollectorsLoading = false;
         });
-        
-        _showSuccessSnackBar('Collectors loaded successfully (${allCollectors.length} collectors)');
-        
+
+        _showSuccessSnackBar(
+          'Collectors loaded successfully (${allCollectors.length} collectors)',
+        );
+
         // Reload dashboard stats after collectors are loaded
         _loadDashboardStats();
-        
       } else {
-        String errorMessage = response['Message'] ?? response['message'] ?? 'Failed to load collectors';
+        String errorMessage =
+            response['Message'] ??
+            response['message'] ??
+            'Failed to load collectors';
         _showErrorSnackBar(errorMessage);
         setState(() {
           allCollectors = [];
@@ -217,15 +235,17 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
 
   /// Add new collector
   Future<void> _addCollector() async {
-    if (usernameController.text.trim().isEmpty || 
-        emailController.text.trim().isEmpty || 
+    if (usernameController.text.trim().isEmpty ||
+        emailController.text.trim().isEmpty ||
         passwordController.text.trim().isEmpty) {
       _showErrorSnackBar('Please fill in all fields');
       return;
     }
 
     // Basic email validation
-    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(emailController.text.trim())) {
+    if (!RegExp(
+      r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+    ).hasMatch(emailController.text.trim())) {
       _showErrorSnackBar('Please enter a valid email address');
       return;
     }
@@ -245,17 +265,19 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
 
       if (response['status'] == true) {
         _showSuccessSnackBar('Collector added successfully!');
-        
+
         // Clear form
         usernameController.clear();
         emailController.clear();
         passwordController.clear();
-        
+
         // Reload collectors
         await _loadCollectors();
-        
       } else {
-        String errorMessage = response['Message'] ?? response['message'] ?? 'Failed to add collector';
+        String errorMessage =
+            response['Message'] ??
+            response['message'] ??
+            'Failed to add collector';
         _showErrorSnackBar(errorMessage);
       }
     } catch (e) {
@@ -272,10 +294,14 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
   void _filterCollectors() {
     setState(() {
       String query = searchController.text.toLowerCase();
-      
+
       filteredCollectors = allCollectors.where((collector) {
-        return (collector['username']?.toString() ?? '').toLowerCase().contains(query) ||
-            (collector['email']?.toString() ?? '').toLowerCase().contains(query) ||
+        return (collector['username']?.toString() ?? '').toLowerCase().contains(
+              query,
+            ) ||
+            (collector['email']?.toString() ?? '').toLowerCase().contains(
+              query,
+            ) ||
             (collector['id']?.toString() ?? '').toLowerCase().contains(query);
       }).toList();
     });
@@ -287,7 +313,7 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
       isDashboardLoading = true;
       isCollectorsLoading = true;
     });
-    
+
     await _initializeDashboard();
     _showSuccessSnackBar('Dashboard refreshed successfully');
   }
@@ -418,10 +444,15 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
                           children: [
                             // Connection status indicator
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
                               decoration: BoxDecoration(
-                                color: (!isDashboardLoading && !isCollectorsLoading) 
-                                    ? Colors.green.shade100 
+                                color:
+                                    (!isDashboardLoading &&
+                                        !isCollectorsLoading)
+                                    ? Colors.green.shade100
                                     : Colors.orange.shade100,
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -429,12 +460,15 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(
-                                    (!isDashboardLoading && !isCollectorsLoading) 
-                                        ? Icons.wifi 
+                                    (!isDashboardLoading &&
+                                            !isCollectorsLoading)
+                                        ? Icons.wifi
                                         : Icons.sync,
                                     size: 12,
-                                    color: (!isDashboardLoading && !isCollectorsLoading) 
-                                        ? Colors.green.shade700 
+                                    color:
+                                        (!isDashboardLoading &&
+                                            !isCollectorsLoading)
+                                        ? Colors.green.shade700
                                         : Colors.orange.shade700,
                                   ),
                                 ],
@@ -443,13 +477,15 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
                             const SizedBox(width: 12),
                             // Refresh button
                             IconButton(
-                              onPressed: (isDashboardLoading || isCollectorsLoading) 
-                                  ? null 
+                              onPressed:
+                                  (isDashboardLoading || isCollectorsLoading)
+                                  ? null
                                   : _refreshDashboard,
                               icon: Icon(
                                 Icons.refresh,
-                                color: (isDashboardLoading || isCollectorsLoading) 
-                                    ? Colors.grey 
+                                color:
+                                    (isDashboardLoading || isCollectorsLoading)
+                                    ? Colors.grey
                                     : Colors.blue,
                               ),
                               tooltip: 'Refresh Dashboard',
@@ -541,15 +577,21 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
                                   prefixIcon: const Icon(Icons.person),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(8),
-                                    borderSide: BorderSide(color: Colors.grey.shade300),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                    ),
                                   ),
                                   enabledBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(8),
-                                    borderSide: BorderSide(color: Colors.grey.shade300),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                    ),
                                   ),
                                   focusedBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(8),
-                                    borderSide: const BorderSide(color: Color(0xFF014EB2)),
+                                    borderSide: const BorderSide(
+                                      color: Color(0xFF014EB2),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -565,15 +607,21 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
                                   prefixIcon: const Icon(Icons.email),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(8),
-                                    borderSide: BorderSide(color: Colors.grey.shade300),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                    ),
                                   ),
                                   enabledBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(8),
-                                    borderSide: BorderSide(color: Colors.grey.shade300),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                    ),
                                   ),
                                   focusedBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(8),
-                                    borderSide: const BorderSide(color: Color(0xFF014EB2)),
+                                    borderSide: const BorderSide(
+                                      color: Color(0xFF014EB2),
+                                    ),
                                   ),
                                 ),
                                 keyboardType: TextInputType.emailAddress,
@@ -591,15 +639,21 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
                                   prefixIcon: const Icon(Icons.lock),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(8),
-                                    borderSide: BorderSide(color: Colors.grey.shade300),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                    ),
                                   ),
                                   enabledBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(8),
-                                    borderSide: BorderSide(color: Colors.grey.shade300),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                    ),
                                   ),
                                   focusedBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(8),
-                                    borderSide: const BorderSide(color: Color(0xFF014EB2)),
+                                    borderSide: const BorderSide(
+                                      color: Color(0xFF014EB2),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -608,18 +662,25 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
                             // Add button
                             ElevatedButton.icon(
                               onPressed: isActionLoading ? null : _addCollector,
-                              icon: isActionLoading 
+                              icon: isActionLoading
                                   ? const SizedBox(
                                       width: 16,
                                       height: 16,
-                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
                                     )
                                   : const Icon(Icons.add),
-                              label: Text(isActionLoading ? 'Adding...' : 'Add Collector'),
+                              label: Text(
+                                isActionLoading ? 'Adding...' : 'Add Collector',
+                              ),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF014EB2),
                                 foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 16,
+                                ),
                               ),
                             ),
                           ],
@@ -671,19 +732,32 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
                                       child: TextField(
                                         controller: searchController,
                                         decoration: InputDecoration(
-                                          hintText: 'Search collectors by username, email, or ID...',
+                                          hintText:
+                                              'Search collectors by username, email, or ID...',
                                           prefixIcon: const Icon(Icons.search),
                                           border: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(8),
-                                            borderSide: BorderSide(color: Colors.grey.shade300),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                            borderSide: BorderSide(
+                                              color: Colors.grey.shade300,
+                                            ),
                                           ),
                                           enabledBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(8),
-                                            borderSide: BorderSide(color: Colors.grey.shade300),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                            borderSide: BorderSide(
+                                              color: Colors.grey.shade300,
+                                            ),
                                           ),
                                           focusedBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(8),
-                                            borderSide: const BorderSide(color: Color(0xFF014EB2)),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                            borderSide: const BorderSide(
+                                              color: Color(0xFF014EB2),
+                                            ),
                                           ),
                                         ),
                                       ),
@@ -693,7 +767,7 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
                               ],
                             ),
                             const SizedBox(height: 20),
-                            
+
                             // Results count
                             Text(
                               'Showing ${filteredCollectors.length} of ${allCollectors.length} collectors',
@@ -703,60 +777,69 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
                               ),
                             ),
                             const SizedBox(height: 16),
-                            
+
                             // Collectors List
                             Expanded(
                               child: isCollectorsLoading
-                                  ? const Center(child: CircularProgressIndicator())
+                                  ? const Center(
+                                      child: CircularProgressIndicator(),
+                                    )
                                   : filteredCollectors.isEmpty
-                                      ? Center(
-                                          child: Column(
-                                            mainAxisAlignment: MainAxisAlignment.center,
-                                            children: [
-                                              Icon(
-                                                allCollectors.isEmpty ? Icons.error_outline : Icons.search_off,
-                                                size: 64,
-                                                color: Colors.grey.shade400,
-                                              ),
-                                              const SizedBox(height: 16),
-                                              Text(
-                                                allCollectors.isEmpty ? 'No collectors available' : 'No collectors found',
-                                                style: TextStyle(
-                                                  fontSize: 18,
-                                                  color: Colors.grey.shade600,
-                                                ),
-                                              ),
-                                              const SizedBox(height: 8),
-                                              Text(
-                                                allCollectors.isEmpty 
-                                                    ? 'Add your first collector using the form above'
-                                                    : 'Try adjusting your search criteria',
-                                                style: TextStyle(
-                                                  fontSize: 14,
-                                                  color: Colors.grey.shade500,
-                                                ),
-                                              ),
-                                              // if (allCollectors.isEmpty) ...[
-                                              //   const SizedBox(height: 16),
-                                              //   ElevatedButton.icon(
-                                              //     onPressed: _refreshDashboard,
-                                              //     icon: const Icon(Icons.refresh),
-                                              //     label: const Text('Retry'),
-                                              //     style: ElevatedButton.styleFrom(
-                                              //       backgroundColor: const Color(0xFF014EB2),
-                                              //       foregroundColor: Colors.white,
-                                              //     ),
-                                              //   ),
-                                              // ],
-                                            ],
+                                  ? Center(
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            allCollectors.isEmpty
+                                                ? Icons.error_outline
+                                                : Icons.search_off,
+                                            size: 64,
+                                            color: Colors.grey.shade400,
                                           ),
-                                        )
-                                      : ListView.builder(
-                                          itemCount: filteredCollectors.length,
-                                          itemBuilder: (context, index) {
-                                            return collectorCard(filteredCollectors[index]);
-                                          },
-                                        ),
+                                          const SizedBox(height: 16),
+                                          Text(
+                                            allCollectors.isEmpty
+                                                ? 'No collectors available'
+                                                : 'No collectors found',
+                                            style: TextStyle(
+                                              fontSize: 18,
+                                              color: Colors.grey.shade600,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            allCollectors.isEmpty
+                                                ? 'Add your first collector using the form above'
+                                                : 'Try adjusting your search criteria',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              color: Colors.grey.shade500,
+                                            ),
+                                          ),
+                                          // if (allCollectors.isEmpty) ...[
+                                          //   const SizedBox(height: 16),
+                                          //   ElevatedButton.icon(
+                                          //     onPressed: _refreshDashboard,
+                                          //     icon: const Icon(Icons.refresh),
+                                          //     label: const Text('Retry'),
+                                          //     style: ElevatedButton.styleFrom(
+                                          //       backgroundColor: const Color(0xFF014EB2),
+                                          //       foregroundColor: Colors.white,
+                                          //     ),
+                                          //   ),
+                                          // ],
+                                        ],
+                                      ),
+                                    )
+                                  : ListView.builder(
+                                      itemCount: filteredCollectors.length,
+                                      itemBuilder: (context, index) {
+                                        return collectorCard(
+                                          filteredCollectors[index],
+                                        );
+                                      },
+                                    ),
                             ),
                           ],
                         ),
@@ -794,15 +877,11 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
               color: const Color(0xFF014EB2).withOpacity(0.1),
               borderRadius: BorderRadius.circular(30),
             ),
-            child: const Icon(
-              Icons.person,
-              size: 30,
-              color: Color(0xFF014EB2),
-            ),
+            child: const Icon(Icons.person, size: 30, color: Color(0xFF014EB2)),
           ),
-          
+
           const SizedBox(width: 16),
-          
+
           // Collector Details
           Expanded(
             child: Column(
@@ -811,95 +890,92 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
                 Row(
                   children: [
                     Text(
-                      collector['username']?.toString() ?? 'N/A',
+                      collector['user_name']?.toString() ?? 'N/A',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
                         color: Colors.black87,
                       ),
                     ),
-                    const Spacer(),
-                    // Status indicator
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: (collector['status']?.toString() ?? 'active') == 'active' 
-                            ? Colors.green.shade100 
-                            : Colors.red.shade100,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        (collector['status']?.toString() ?? 'active').toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: (collector['status']?.toString() ?? 'active') == 'active' 
-                              ? Colors.green.shade700 
-                              : Colors.red.shade700,
-                        ),
-                      ),
-                    ),
+                    // const Spacer(),
+                    // // Status indicator
+                    // Container(
+                    //   padding: const EdgeInsets.symmetric(
+                    //     horizontal: 8,
+                    //     vertical: 4,
+                    //   ),
+                    //   decoration: BoxDecoration(
+                    //     color:
+                    //         (collector['status']?.toString() ?? 'active') ==
+                    //             'active'
+                    //         ? Colors.green.shade100
+                    //         : Colors.red.shade100,
+                    //     borderRadius: BorderRadius.circular(12),
+                    //   ),
+                    //   child: Text(
+                    //     (collector['status']?.toString() ?? 'active')
+                    //         .toUpperCase(),
+                    //     style: TextStyle(
+                    //       fontSize: 10,
+                    //       fontWeight: FontWeight.bold,
+                    //       color:
+                    //           (collector['status']?.toString() ?? 'active') ==
+                    //               'active'
+                    //           ? Colors.green.shade700
+                    //           : Colors.red.shade700,
+                    //     ),
+                    //   ),
+                    // ),
                   ],
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'Email: ${collector['email']?.toString() ?? 'N/A'}',
-                  style: TextStyle(
-                    color: Colors.grey.shade600,
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   'ID: ${collector['id']?.toString() ?? collector['collector_id']?.toString() ?? 'N/A'}',
-                  style: TextStyle(
-                    color: Colors.grey.shade600,
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                 ),
                 const SizedBox(height: 2),
-                Text(  
+                Text(
                   'Registered: ${collector['register_date']?.toString() ?? collector['created_at']?.toString() ?? collector['registration_date']?.toString() ?? 'N/A'}',
-                  style: TextStyle(
-                    color: Colors.grey.shade500,
-                    fontSize: 10,
-                  ),
+                  style: TextStyle(color: Colors.grey.shade500, fontSize: 10),
                 ),
               ],
             ),
           ),
-          
+
           // Action buttons
-          Column(
-            children: [
-              IconButton(
-                onPressed: () {
-                  // Add functionality to view collector details
-                  _showSuccessSnackBar('Viewing details for ${collector['username'] ?? 'collector'}');
-                },
-                icon: const Icon(Icons.visibility, color: Color(0xFF014EB2)),
-                tooltip: 'View Details',
-                constraints: const BoxConstraints(
-                  minWidth: 32,
-                  minHeight: 32,
-                ),
-                padding: const EdgeInsets.all(4),
-              ),
-              IconButton(
-                onPressed: () {
-                  // Add functionality to edit collector
-                  _showSuccessSnackBar('Editing ${collector['username'] ?? 'collector'}');
-                },
-                icon: const Icon(Icons.edit, color: Colors.orange),
-                tooltip: 'Edit Collector',
-                constraints: const BoxConstraints(
-                  minWidth: 32,
-                  minHeight: 32,
-                ),
-                padding: const EdgeInsets.all(4),
-              ),
-            ],
-          ),
+          // Column(
+          //   children: [
+          //     IconButton(
+          //       onPressed: () {
+          //         // Add functionality to view collector details
+          //         _showSuccessSnackBar(
+          //           'Viewing details for ${collector['username'] ?? 'collector'}',
+          //         );
+          //       },
+          //       icon: const Icon(Icons.visibility, color: Color(0xFF014EB2)),
+          //       tooltip: 'View Details',
+          //       constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+          //       padding: const EdgeInsets.all(4),
+          //     ),
+          //     IconButton(
+          //       onPressed: () {
+          //         // Add functionality to edit collector
+          //         _showSuccessSnackBar(
+          //           'Editing ${collector['username'] ?? 'collector'}',
+          //         );
+          //       },
+          //       icon: const Icon(Icons.edit, color: Colors.orange),
+          //       tooltip: 'Edit Collector',
+          //       constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+          //       padding: const EdgeInsets.all(4),
+          //     ),
+          //   ],
+          // ),
         ],
       ),
     );
@@ -923,20 +999,19 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
             fontSize: 14,
           ),
         ),
-       onTap: () {
-        // 🔹 UPDATED NAVIGATION LOGIC
-        if (title == "Dashboard") {
-          // Stay on current page or refresh
-          Navigator.pushNamed(context, '/AdminDashboardWeb');
-        } else if (title == "Collector") {
-          // Navigate to Collector Management
-          Navigator.pushNamed(context, '/CollectorManagement');
-        } 
-      },
+        onTap: () {
+          // 🔹 UPDATED NAVIGATION LOGIC
+          if (title == "Dashboard") {
+            // Stay on current page or refresh
+            Navigator.pushNamed(context, '/AdminDashboardWeb');
+          } else if (title == "Collectors") {
+            // Navigate to Collector Management
+            Navigator.pushNamed(context, '/CollectorManagement');
+          }
+        },
       ),
     );
   }
-  
 
   /// Admin Logout Button
   Widget logoutButton() {
@@ -960,7 +1035,13 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
   }
 
   /// Admin Dashboard Card with Icon
-  Widget adminDashboardCard(String title, String content, IconData icon, Color bgColor, Color iconColor) {
+  Widget adminDashboardCard(
+    String title,
+    String content,
+    IconData icon,
+    Color bgColor,
+    Color iconColor,
+  ) {
     return Expanded(
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 10),

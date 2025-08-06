@@ -117,7 +117,7 @@ class AdminBackendServices {
     final body = jsonEncode({
       "type": "add_collector",
       "loged_user_id": "52",
-      "username": username,
+      "user_name": username,
       "email": email,
       "password": password,
     });
@@ -180,45 +180,7 @@ class AdminBackendServices {
     }
   }
 
-  /// 🔹 Update Collector Status (Optional - for future use)
-  static Future<Map<String, dynamic>> updateCollectorStatus({
-    required String collectorId,
-    required String status, // "active" or "inactive"
-  }) async {
-    final token = await _getToken();
-
-    final url = Uri.parse("http://app.chilawtradeassociation.com/tradeApi/index.php");
-    final body = jsonEncode({
-      "type": "update_collector_status",
-      "loged_user_id": "52",
-      "collector_id": collectorId,
-      "status": status,
-    });
-
-    try {
-      final response = await http.post(
-        url,
-        body: body,
-        headers: {
-          'Content-Type': 'application/json',
-          if (token != null) 'Authorization': 'Bearer $token',
-        },
-      );
-
-      print("updateCollectorStatus Status Code: ${response.statusCode}");
-      print("updateCollectorStatus Body: ${response.body}");
-
-      if (response.statusCode == 401) {
-        return {"status": false, "Message": "Unauthorized - Please log in again"};
-      }
-
-      return jsonDecode(response.body);
-    } catch (e) {
-      print("updateCollectorStatus API Error: $e");
-      return {"status": false, "Message": "Connection error: $e"};
-    }
-  }
-
+  
   /// 🔹 Delete Collector (Optional - for future use)
   static Future<Map<String, dynamic>> deleteCollector({
     required String collectorId,
@@ -229,7 +191,7 @@ class AdminBackendServices {
     final body = jsonEncode({
       "type": "delete_collector",
       "loged_user_id": "52",
-      "collector_id": collectorId,
+      "Id": collectorId,
     });
 
     try {
