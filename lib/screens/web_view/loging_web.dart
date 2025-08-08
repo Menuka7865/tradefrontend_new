@@ -15,17 +15,7 @@ class _LogingWebState extends State<LogingWeb> {
   final TextEditingController _passwordController = TextEditingController(); // Fixed: Changed from _shopIdController
   final TextEditingController _brNumberController = TextEditingController(); // Fixed: Changed from _shopNameController
 
-  // Helper method to determine user type based on BR number
-  String _determineUserType(String brNumber) {
-    // Admin logic: BR numbers starting with "ADMIN" or specific admin codes
-    if (brNumber.toUpperCase().startsWith('ADMIN') || 
-        brNumber == '000000' || 
-        brNumber == 'ADMIN123' ||
-        brNumber.toUpperCase() == 'ADMIN') {
-      return 'admin';
-    }
-    return 'user';
-  }
+  
 
   void _submitForm() async {
     if (_formKey.currentState!.validate()) {
@@ -88,7 +78,7 @@ class _LogingWebState extends State<LogingWeb> {
             responseObj = {
               'status': true,
               'Message': 'Login Successful!',
-              'user_type': _determineUserType(uname), // Determine locally
+              // 'user_type': _determineUserType(uname), // Determine locally
             };
           } else {
             responseObj = {
@@ -114,11 +104,9 @@ class _LogingWebState extends State<LogingWeb> {
           _brNumberController.clear();
           _passwordController.clear();
 
-          // Determine user type
-          String userType = responseObj['user_type'] ?? _determineUserType(uname);
-          
+         
           if (mounted) {
-            if (userType.toLowerCase() == 'admin') {
+            
               // Check if admin route exists, fallback to user route if not
               try {
                 Navigator.pushReplacementNamed(context, '/AdminDashboard');
@@ -126,9 +114,7 @@ class _LogingWebState extends State<LogingWeb> {
                 print("Admin route not found, redirecting to user dashboard: $e");
                 Navigator.pushReplacementNamed(context, '/HomeWeb');
               }
-            } else {
-              Navigator.pushReplacementNamed(context, '/HomeWeb');
-            }
+           
           }
         } else {
           // Handle login failure
@@ -282,8 +268,8 @@ class _LogingWebState extends State<LogingWeb> {
                             ),
                             const SizedBox(height: 32),
                             _buildField(
-                              "BR Number",
-                              "Enter your BR Number",
+                              "User Code",
+                              "Enter your User Code",
                               _brNumberController,
                               icon: Icons.verified_user_outlined,
                             ),

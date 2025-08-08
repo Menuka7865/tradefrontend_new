@@ -14,7 +14,7 @@ class AdminBackendServices {
     final token = await _getToken();
 
     final url = Uri.parse("http://app.chilawtradeassociation.com/tradeApi/index.php");
-    final body = jsonEncode({"type": "list_shop","loged_user_id":"52"});
+    final body = jsonEncode({"type": "list_shop","loged_user_id": "52"});
 
     try {
       final response = await http.post(
@@ -107,7 +107,7 @@ class AdminBackendServices {
 
   /// 🔹 Add New Collector
   static Future<Map<String, dynamic>> addCollector({
-    required String username,
+    required String usercode,
     required String email,
     required String password,
   }) async {
@@ -117,7 +117,7 @@ class AdminBackendServices {
     final body = jsonEncode({
       "type": "add_collector",
       "loged_user_id": "52",
-      "user_name": username,
+      "user_code": usercode,
       "email": email,
       "password": password,
     });

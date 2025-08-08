@@ -256,7 +256,7 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
       });
 
       final response = await AdminBackendServices.addCollector(
-        username: usernameController.text.trim(),
+        usercode: usernameController.text.trim(),
         email: emailController.text.trim(),
         password: passwordController.text.trim(),
       );
@@ -296,7 +296,7 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
       String query = searchController.text.toLowerCase();
 
       filteredCollectors = allCollectors.where((collector) {
-        return (collector['username']?.toString() ?? '').toLowerCase().contains(
+        return (collector['usercode']?.toString() ?? '').toLowerCase().contains(
               query,
             ) ||
             (collector['email']?.toString() ?? '').toLowerCase().contains(
@@ -572,8 +572,8 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
                               child: TextField(
                                 controller: usernameController,
                                 decoration: InputDecoration(
-                                  labelText: 'Username',
-                                  hintText: 'Enter collector username',
+                                  labelText: 'Usercode',
+                                  hintText: 'Enter collector user code',
                                   prefixIcon: const Icon(Icons.person),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(8),
@@ -890,7 +890,7 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
                 Row(
                   children: [
                     Text(
-                      collector['user_name']?.toString() ?? 'N/A',
+                      collector['user_code']?.toString() ?? 'N/A',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,

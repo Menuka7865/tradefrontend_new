@@ -250,7 +250,7 @@ class _CollectorManagementMobileState extends State<CollectorManagementMobile> {
       });
 
       final response = await AdminBackendServices.addCollector(
-        username: usernameController.text.trim(),
+        usercode: usernameController.text.trim(),
         email: emailController.text.trim(),
         password: passwordController.text.trim(),
       );
@@ -293,7 +293,7 @@ class _CollectorManagementMobileState extends State<CollectorManagementMobile> {
       String query = searchController.text.toLowerCase();
       
       filteredCollectors = allCollectors.where((collector) {
-        bool matchesSearch = (collector['username']?.toString() ?? '').toLowerCase().contains(query) ||
+        bool matchesSearch = (collector['user_code']?.toString() ?? '').toLowerCase().contains(query) ||
             (collector['email']?.toString() ?? '').toLowerCase().contains(query) ||
             (collector['id']?.toString() ?? '').toLowerCase().contains(query);
         
@@ -738,8 +738,8 @@ class _CollectorManagementMobileState extends State<CollectorManagementMobile> {
             TextField(
               controller: usernameController,
               decoration: InputDecoration(
-                labelText: 'Username',
-                hintText: 'Enter collector username',
+                labelText: 'Usercode',
+                hintText: 'Enter collector usercode',
                 prefixIcon: const Icon(Icons.person),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
@@ -1013,7 +1013,7 @@ class _CollectorManagementMobileState extends State<CollectorManagementMobile> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      collector['user_name']?.toString() ?? 'N/A',
+                      collector['user_code']?.toString() ?? 'N/A',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 14,

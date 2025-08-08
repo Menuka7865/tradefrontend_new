@@ -33,12 +33,13 @@ class MyApp extends StatelessWidget {
         '/CreateShopeAccount': (context) => const CreateShopeAccount(),
         '/PasswordshowingPhone': (context) => const PasswordshowingPhone(),
         '/Passwordshowing': (context) => const Passwordshowing(),
+        '/LogingWeb': (context) => const LogingWeb(),
         
         // Dashboard routes
         '/AdminDashboard': (context) => const ResponsiveHome(), // Responsive dashboard
         '/AdminDashboardWeb': (context) => const AdminDashboardWeb(), // Admin dashboard web
         '/AdminDashboardMobile': (context) => const AdminDashboardMobile(), // Admin dashboard mobile
-        '/LogingWeb': (context) => const LogingWeb(),
+       
         
         // 🔹 Collector Management routes - FIXED
         '/CollectorManagement': (context) => const ResponsiveCollector(), // Responsive collector management

@@ -3,19 +3,17 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ServerServicesloging {
-  /// 🔹 Login Method
+  /// 🔐 Login Method
   static Future<String> loging({
     required String uname,
     required String password,
   }) async {
-    final url = Uri.parse(
-      "http://app.chilawtradeassociation.com/tradeApi/index.php",
-    );
+    final url = Uri.parse("http://app.chilawtradeassociation.com/tradeApi/index.php");
 
     final body = jsonEncode({
-      "user_name": uname,
+      "user_code": uname,
       "password": password,
-      "type": "login",
+      "type": "login_admin",
     });
 
     try {
@@ -30,14 +28,19 @@ class ServerServicesloging {
 
       final Map<String, dynamic> responseObj = jsonDecode(response.body);
 
-      // ✅ Check if login is successful and token exists
       if (responseObj['status'] == true &&
           responseObj["data"] != null &&
           responseObj["data"]["user_auth"] != null) {
         final prefs = await SharedPreferences.getInstance();
 
-        // ✅ Save user_auth as token
+        // ✅ Save token
         await prefs.setString("auth_token", responseObj["data"]["user_auth"]);
+
+        // ✅ Save user ID (integer)
+        if (responseObj["data"]["id"] != null) {
+          await prefs.setInt("id", responseObj["data"]["id"]);
+          print("User ID saved: ${responseObj["data"]["id"]}");
+        }
 
         print("Token saved: ${responseObj["data"]["user_auth"]}");
       } else {
@@ -55,50 +58,22 @@ class ServerServicesloging {
     }
   }
 
-  /// 🔹 Logout Method
+  /// 🔓 Logout Method
   static Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove("auth_token");
+    await prefs.remove("id");
   }
 
-  /// 🔹 Get Token Method
+  /// 🔑 Get Token
   static Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString("auth_token");
   }
 
-  /// 🔹 Determine User Type (Fallback)
-  static String determineUserType(String brNumber) {
-    if (brNumber.toUpperCase().startsWith('ADMIN') ||
-        brNumber == '000000' ||
-        brNumber == 'ADMIN123') {
-      return 'admin';
-    }
-    return 'user';
-  }
-
-  /// 🔹 Login and Return Response with User Type
-  static Future<Map<String, dynamic>> loginWithUserType({
-    required String uname,
-    required String password,
-  }) async {
-    try {
-      final response = await loging(uname: uname, password: password);
-      Map<String, dynamic> responseObj = jsonDecode(response);
-
-      // ✅ If API does not return user_type, determine it locally
-      if (!responseObj.containsKey('user_type') ||
-          responseObj['user_type'] == null) {
-        responseObj['user_type'] = determineUserType(uname);
-      }
-
-      return responseObj;
-    } catch (e) {
-      return {
-        "status": false,
-        "Message": "Login failed: $e",
-        "user_type": "user"
-      };
-    }
+  /// 🆔 Get User ID (as integer)
+  static Future<int?> getUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt("id");
   }
 }

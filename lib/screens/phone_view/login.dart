@@ -108,13 +108,13 @@ class _LoginState extends State<Login> {
                       child: Column(
                         children: <Widget>[
                           const SizedBox(height: 40),
-                          _buildLabel("BR Number"),
+                          _buildLabel("User code"),
                           buildTextField(
-                            label: "BR Number",
-                            hintText: "Enter BR Number",
+                            label: "User Code",
+                            hintText: "Enter User Code",
                             icon: Icons.verified_user_outlined,
                             controller: _shopNameController,
-                            validator: _requiredValidator("BR Number"),
+                            validator: _requiredValidator("User code"),
                           ),
                           const SizedBox(height: 20),
                           _buildLabel("Password"),
