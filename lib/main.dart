@@ -1,8 +1,8 @@
 import 'package:chilawtraders/screens/phone_view/collector_management_phone.dart';
-import 'package:chilawtraders/screens/phone_view/home_phone.dart';
+import 'package:chilawtraders/screens/phone_view/adminpage_phone.dart';
 import 'package:chilawtraders/screens/phone_view/passwordshowing_phone.dart';
 import 'package:chilawtraders/screens/web_view/create_web.dart';
-import 'package:chilawtraders/screens/web_view/home_web.dart';
+import 'package:chilawtraders/screens/web_view/adminpage.dart';
 import 'package:chilawtraders/screens/web_view/passwordshowing.dart';
 import 'package:chilawtraders/screens/web_view/loging_web.dart';
 import 'package:chilawtraders/screens/responsive_home.dart';

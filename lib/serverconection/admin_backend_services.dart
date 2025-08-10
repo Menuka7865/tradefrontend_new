@@ -217,4 +217,49 @@ class AdminBackendServices {
       return {"status": false, "Message": "Connection error: $e"};
     }
   }
+
+  //Update Collector (Optional - for future use)
+  static Future<Map<String, dynamic>> updateCollector({
+    required String collectorId,
+    required String usercode,
+    required String email,
+     String? password,
+  }) async {
+    final token = await _getToken();
+
+    final url = Uri.parse("http://app.chilawtradeassociation.com/tradeApi/index.php");
+    final body = jsonEncode({
+      "type": "update_collector",
+      "loged_user_id": "52",
+      "Id": collectorId,
+      "user_code": usercode,
+      "email": email,
+      "password": password,
+    });
+
+    try {
+      final response = await http.post(
+        url,
+        body: body,
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+
+      print("updateCollector Status Code: ${response.statusCode}");
+      print("updateCollector Body: ${response.body}");
+
+      if (response.statusCode == 401) {
+        return {"status": false, "Message": "Unauthorized - Please log in again"};
+      }
+
+      return jsonDecode(response.body);
+    } catch (e) {
+      print("updateCollector API Error: $e");
+      return {"status": false, "Message": "Connection error: $e"};
+    }
+  }
 }
+
+

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:chilawtraders/screens/phone_view/home_phone.dart';
-import 'package:chilawtraders/screens/web_view/home_web.dart';
+import 'package:chilawtraders/screens/phone_view/adminpage_phone.dart';
+import 'package:chilawtraders/screens/web_view/adminpage.dart';
 
 enum DeviceType { mobile, tablet, desktop }
 
