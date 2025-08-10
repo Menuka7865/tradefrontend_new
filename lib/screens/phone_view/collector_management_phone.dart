@@ -8,14 +8,14 @@ class CollectorManagementMobile extends StatefulWidget {
   const CollectorManagementMobile({super.key});
 
   @override
-  State<CollectorManagementMobile> createState() => _CollectorManagementMobileState();
-}
+  State createState() => _CollectorManagementMobileState();
 
-DeviceType _getDeviceType(BuildContext context) {
-  final width = MediaQuery.of(context).size.width;
-  if (width >= 1000) return DeviceType.desktop;
-  if (width >= 600) return DeviceType.tablet;
-  return DeviceType.mobile;
+  DeviceType _getDeviceType(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    if (width >= 1000) return DeviceType.desktop;
+    if (width >= 600) return DeviceType.tablet;
+    return DeviceType.mobile;
+  }
 }
 
 class _CollectorManagementMobileState extends State<CollectorManagementMobile> {
@@ -59,11 +59,10 @@ class _CollectorManagementMobileState extends State<CollectorManagementMobile> {
   }
 
   /// Validate token before initializing dashboard
-  Future<void> _validateTokenAndInitialize() async {
+  Future _validateTokenAndInitialize() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString("auth_token");
-
       if (token == null || token.isEmpty) {
         _showErrorSnackBar("No authentication token found. Please log in again.");
         _redirectToLogin();
@@ -72,10 +71,9 @@ class _CollectorManagementMobileState extends State<CollectorManagementMobile> {
 
       // Validate token by making a test API call
       final response = await AdminBackendServices.getDashboardStats();
-
       if (response['status'] == false &&
           (response['Message']?.toString().contains('Unauthorized') == true ||
-           response['Message']?.toString().contains('Invalid token') == true)) {
+              response['Message']?.toString().contains('Invalid token') == true)) {
         _showErrorSnackBar("Session expired. Please log in again.");
         _redirectToLogin();
         return;
@@ -96,7 +94,7 @@ class _CollectorManagementMobileState extends State<CollectorManagementMobile> {
   }
 
   /// Initialize dashboard by loading all necessary data
-  Future<void> _initializeDashboard() async {
+  Future _initializeDashboard() async {
     await Future.wait([
       _loadDashboardStats(),
       _loadCollectors(),
@@ -104,18 +102,17 @@ class _CollectorManagementMobileState extends State<CollectorManagementMobile> {
   }
 
   /// Load dashboard statistics from backend
-  Future<void> _loadDashboardStats() async {
+  Future _loadDashboardStats() async {
     try {
       setState(() {
         isDashboardLoading = true;
       });
-
       final response = await AdminBackendServices.getCollectorStats();
       print("Collector Stats API Response: $response");
 
       if (response['status'] == false &&
           (response['Message']?.toString().contains('Unauthorized') == true ||
-           response['Message']?.toString().contains('Invalid token') == true)) {
+              response['Message']?.toString().contains('Invalid token') == true)) {
         _showErrorSnackBar("Session expired. Please log in again.");
         _redirectToLogin();
         return;
@@ -147,18 +144,17 @@ class _CollectorManagementMobileState extends State<CollectorManagementMobile> {
   }
 
   /// Load collectors from API
-  Future<void> _loadCollectors() async {
+  Future _loadCollectors() async {
     try {
       setState(() {
         isCollectorsLoading = true;
       });
-
       final response = await AdminBackendServices.getCollectors();
       print("Collectors API Response: $response");
 
       if (response['status'] == false &&
           (response['Message']?.toString().contains('Unauthorized') == true ||
-           response['Message']?.toString().contains('Invalid token') == true)) {
+              response['Message']?.toString().contains('Invalid token') == true)) {
         _showErrorSnackBar("Session expired. Please log in again.");
         _redirectToLogin();
         return;
@@ -167,7 +163,6 @@ class _CollectorManagementMobileState extends State<CollectorManagementMobile> {
       if (response['status'] == true) {
         setState(() {
           var responseData = response['data'] ?? response['collectors'] ?? response['Data'];
-
           if (responseData is List) {
             allCollectors = List<Map<String, dynamic>>.from(responseData);
           } else if (responseData is Map && responseData.containsKey('collectors')) {
@@ -175,17 +170,13 @@ class _CollectorManagementMobileState extends State<CollectorManagementMobile> {
           } else {
             allCollectors = List<Map<String, dynamic>>.from(response['Data'] ?? []);
           }
-
           totalCollectors = allCollectors.length.toString();
           _filterCollectors();
           isCollectorsLoading = false;
         });
-
         _showSuccessSnackBar('Collectors loaded successfully (${allCollectors.length} collectors)');
-
         // Reload dashboard stats after collectors are loaded
         await _loadDashboardStats();
-
       } else {
         String errorMessage = response['Message'] ?? response['message'] ?? 'Failed to load collectors';
         _showErrorSnackBar(errorMessage);
@@ -206,8 +197,33 @@ class _CollectorManagementMobileState extends State<CollectorManagementMobile> {
     }
   }
 
+  /// Filter collectors based on search query and selected filter
+  void _filterCollectors() {
+    setState(() {
+      String query = searchController.text.toLowerCase();
+      filteredCollectors = allCollectors.where((collector) {
+        bool matchesSearch = (collector['user_code']?.toString() ?? '').toLowerCase().contains(query) ||
+            (collector['email']?.toString() ?? '').toLowerCase().contains(query) ||
+            (collector['id']?.toString() ?? '').toLowerCase().contains(query);
+        bool matchesFilter = selectedFilter == 'All' ||
+            (collector['status']?.toString() ?? 'active') == selectedFilter;
+        return matchesSearch && matchesFilter;
+      }).toList();
+    });
+  }
+
+  /// Refresh all dashboard data
+  Future _refreshDashboard() async {
+    setState(() {
+      isDashboardLoading = true;
+      isCollectorsLoading = true;
+    });
+    await _initializeDashboard();
+    _showSuccessSnackBar('Dashboard refreshed successfully');
+  }
+
   /// Add new collector
-  Future<void> _addCollector() async {
+  Future _addCollector() async {
     if (usernameController.text.trim().isEmpty ||
         emailController.text.trim().isEmpty ||
         passwordController.text.trim().isEmpty) {
@@ -224,26 +240,20 @@ class _CollectorManagementMobileState extends State<CollectorManagementMobile> {
       setState(() {
         isActionLoading = true;
       });
-
       final response = await AdminBackendServices.addCollector(
         usercode: usernameController.text.trim(),
         email: emailController.text.trim(),
         password: passwordController.text.trim(),
       );
-
       print("Add Collector API Response: $response");
-
       if (response['status'] == true) {
         _showSuccessSnackBar('Collector added successfully!');
-
         usernameController.clear();
         emailController.clear();
         passwordController.clear();
-
         setState(() {
           showAddForm = false;
         });
-
         await _loadCollectors();
       } else {
         String errorMessage = response['Message'] ?? response['message'] ?? 'Failed to add collector';
@@ -259,36 +269,7 @@ class _CollectorManagementMobileState extends State<CollectorManagementMobile> {
     }
   }
 
-  /// Filter collectors based on search query
-  void _filterCollectors() {
-    setState(() {
-      String query = searchController.text.toLowerCase();
-
-      filteredCollectors = allCollectors.where((collector) {
-        bool matchesSearch = (collector['user_code']?.toString() ?? '').toLowerCase().contains(query) ||
-            (collector['email']?.toString() ?? '').toLowerCase().contains(query) ||
-            (collector['id']?.toString() ?? '').toLowerCase().contains(query);
-
-        bool matchesFilter = selectedFilter == 'All' ||
-            (collector['status']?.toString() ?? 'active') == selectedFilter;
-
-        return matchesSearch && matchesFilter;
-      }).toList();
-    });
-  }
-
-  /// Refresh all dashboard data
-  Future<void> _refreshDashboard() async {
-    setState(() {
-      isDashboardLoading = true;
-      isCollectorsLoading = true;
-    });
-
-    await _initializeDashboard();
-    _showSuccessSnackBar('Dashboard refreshed successfully');
-  }
-
-  // Snack bar helper methods
+  /// Show success SnackBar
   void _showSuccessSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -299,6 +280,7 @@ class _CollectorManagementMobileState extends State<CollectorManagementMobile> {
     );
   }
 
+  /// Show error SnackBar
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -312,7 +294,6 @@ class _CollectorManagementMobileState extends State<CollectorManagementMobile> {
   /// Show Edit Monthly Payment Dialog
   void _showEditMonthlyPaymentDialog() {
     TextEditingController paymentController = TextEditingController(text: monthlyPayment);
-
     showDialog(
       context: context,
       builder: (context) {
@@ -340,14 +321,11 @@ class _CollectorManagementMobileState extends State<CollectorManagementMobile> {
                   _showErrorSnackBar('Please enter a valid number');
                   return;
                 }
-
                 Navigator.of(context).pop();
-
                 setState(() {
                   monthlyPayment = newPayment;
                   // TODO: Call your API to save updated monthly payment if you have such an API.
                 });
-
                 _showSuccessSnackBar('Monthly payment updated to $newPayment');
               },
               child: const Text('Save'),
@@ -358,17 +336,18 @@ class _CollectorManagementMobileState extends State<CollectorManagementMobile> {
     );
   }
 
-  /// Show Edit Collector Dialog pre-filled with collector data
-  void _showEditCollectorDialog(Map<String, dynamic> collector) {
-    TextEditingController editUsercodeController = TextEditingController(text: collector['user_code'] ?? '');
-    TextEditingController editEmailController = TextEditingController(text: collector['email'] ?? '');
+  /// Show Edit Collector Dialog pre-filled with collector data and update on save
+  void _showEditCollectorDialog(Map collector) {
+    TextEditingController editUsercodeController =
+        TextEditingController(text: collector['user_code'] ?? '');
+    TextEditingController editEmailController =
+        TextEditingController(text: collector['email'] ?? '');
     TextEditingController editPasswordController = TextEditingController();
 
     showDialog(
       context: context,
       builder: (context) {
         bool isUpdating = false;
-
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             return AlertDialog(
@@ -477,14 +456,12 @@ class _CollectorManagementMobileState extends State<CollectorManagementMobile> {
       setState(() {
         isActionLoading = true;
       });
-
       final response = await AdminBackendServices.updateCollector(
         collectorId: collectorId,
         usercode: usercode,
         email: email,
         password: password,
       );
-
       if (response['status'] == true) {
         return true;
       } else {
@@ -499,6 +476,37 @@ class _CollectorManagementMobileState extends State<CollectorManagementMobile> {
       setState(() {
         isActionLoading = false;
       });
+    }
+  }
+
+  /// Delete collector function with confirmation
+  Future<void> _deleteCollector(Map collector) async {
+    final confirmDelete = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Delete'),
+        content: const Text('Are you sure you want to delete this collector?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+          ElevatedButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Delete')),
+        ],
+      ),
+    );
+
+    if (confirmDelete == true) {
+      setState(() => isActionLoading = true);
+      final response = await AdminBackendServices.deleteCollector(
+        collectorId: (collector['id'] ?? collector['collector_id']).toString(),
+      );
+      setState(() => isActionLoading = false);
+
+      if (response['status'] == true) {
+        _showSuccessSnackBar('Collector deleted successfully.');
+        await _loadCollectors();
+      } else {
+        String errorMessage = response['Message'] ?? response['message'] ?? 'Failed to delete collector';
+        _showErrorSnackBar(errorMessage);
+      }
     }
   }
 
@@ -580,7 +588,6 @@ class _CollectorManagementMobileState extends State<CollectorManagementMobile> {
               // Add Collector Form toggle & form
               if (showAddForm) _buildAddCollectorForm(),
               if (showAddForm) const SizedBox(height: 24),
-
               // Collectors section
               _buildCollectorsSection(),
             ],
@@ -912,8 +919,8 @@ class _CollectorManagementMobileState extends State<CollectorManagementMobile> {
     );
   }
 
-  /// Mobile Collector Card Widget with Edit button opening edit dialog
-  Widget _mobileCollectorCard(Map<String, dynamic> collector) {
+  /// Mobile Collector Card Widget with Edit and Delete buttons.
+  Widget _mobileCollectorCard(Map collector) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -996,10 +1003,11 @@ class _CollectorManagementMobileState extends State<CollectorManagementMobile> {
               ),
               const SizedBox(width: 8),
               TextButton.icon(
-                onPressed: () {
-                  // TODO: Add delete functionality if needed
-                  _showSuccessSnackBar('Delete collector function is not implemented yet.');
-                },
+                onPressed: isActionLoading
+                    ? null
+                    : () {
+                        _deleteCollector(collector);
+                      },
                 icon: const Icon(Icons.delete, size: 16, color: Colors.red),
                 label: const Text(
                   'Delete',

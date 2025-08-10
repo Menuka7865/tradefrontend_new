@@ -1,8 +1,17 @@
-import 'package:flutter/material.dart';
 import 'dart:convert';
-import 'package:chilawtraders/serverconection/admin_backend_services.dart';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+import 'dart:html' as html; // For web download
+
+import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:permission_handler/permission_handler.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart';
+
+import 'package:chilawtraders/serverconection/admin_backend_services.dart';
 
 class AdminDashboardWeb extends StatefulWidget {
   const AdminDashboardWeb({super.key});
@@ -23,17 +32,23 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
   List<Map<String, dynamic>> filteredShops = [];
   TextEditingController searchController = TextEditingController();
   String selectedFilter = 'All';
-  
+
   // Loading states
   bool isDashboardLoading = true;
   bool isShopsLoading = true;
   bool isActionLoading = false;
 
+  // GlobalKey for QR code capturing
+  final GlobalKey qrKey = GlobalKey();
+
+  // Store current shop for QR saving
+  Map<String, dynamic>? _currentQrShop;
+
   @override
   void initState() {
     super.initState();
     searchController.addListener(_filterShops);
-    _validateTokenAndInitialize(); // Updated this line
+    _validateTokenAndInitialize();
   }
 
   @override
@@ -42,7 +57,6 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
     super.dispose();
   }
 
-  /// Validate token before initializing dashboard
   Future<void> _validateTokenAndInitialize() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -54,18 +68,16 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
         return;
       }
 
-      // Validate token by making a test API call using new service
       final response = await AdminBackendServices.getDashboardStats();
-      
-      if (response['status'] == false && 
+
+      if (response['status'] == false &&
           (response['Message']?.toString().contains('Unauthorized') == true ||
-           response['Message']?.toString().contains('Invalid token') == true)) {
+              response['Message']?.toString().contains('Invalid token') == true)) {
         _showErrorSnackBar("Session expired. Please log in again.");
         _redirectToLogin();
         return;
       }
 
-      // If token is valid, initialize dashboard
       _initializeDashboard();
     } catch (e) {
       print('Token validation error: $e');
@@ -74,19 +86,15 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
     }
   }
 
-  /// Redirect to login page
   void _redirectToLogin() {
     Navigator.pushReplacementNamed(context, '/Login');
   }
 
-  /// Generate unique QR code data for each shop
   String _generateQRData(Map<String, dynamic> shop) {
-    // Create a unique identifier combining shop details
     String shopId = shop['id']?.toString() ?? shop['shop_id']?.toString() ?? '';
     String shopName = shop['shop_name']?.toString() ?? shop['name']?.toString() ?? '';
     String brNumber = shop['br_registration_number']?.toString() ?? shop['br_number']?.toString() ?? '';
-    
-    // Create JSON data for QR code
+
     Map<String, String> qrData = {
       'shop_id': shopId,
       'shop_name': shopName,
@@ -94,22 +102,21 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
       'type': 'shop_verification',
       'generated_at': DateTime.now().toIso8601String(),
     };
-    
+
     return jsonEncode(qrData);
   }
 
-  /// Show QR Code in a dialog
   void _showQRDialog(Map<String, dynamic> shop) {
     String qrData = _generateQRData(shop);
     String shopName = shop['shop_name']?.toString() ?? shop['name']?.toString() ?? 'Unknown Shop';
-    
+
+    _currentQrShop = shop; // Save for saving image on button press
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: Container(
             width: 400,
             padding: const EdgeInsets.all(24),
@@ -118,36 +125,32 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
               children: [
                 Text(
                   'QR Code for $shopName',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 20),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey.shade300),
-                  ),
-                  child: QrImageView(
-                    data: qrData,
-                    version: QrVersions.auto,
-                    size: 200.0,
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.black,
+                RepaintBoundary(
+                  key: qrKey,
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: QrImageView(
+                      data: qrData,
+                      version: QrVersions.auto,
+                      size: 200.0,
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.black,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
                 Text(
                   'Scan this QR code to verify shop details',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
-                  ),
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 20),
@@ -159,10 +162,9 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
                       child: const Text('Close'),
                     ),
                     ElevatedButton.icon(
-                      onPressed: () {
-                        // Here you could add functionality to save or share the QR code
+                      onPressed: () async {
+                        await _saveQrCode();
                         Navigator.of(context).pop();
-                        _showSuccessSnackBar('QR Code ready for $shopName');
                       },
                       icon: const Icon(Icons.download),
                       label: const Text('Save'),
@@ -181,7 +183,75 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
     );
   }
 
-  /// Initialize dashboard by loading all necessary data
+  // Adapted _saveQrCode for mobile and web
+  Future<void> _saveQrCode() async {
+    if (kIsWeb) {
+      await _saveQrCodeWeb();
+    } else {
+      await _saveQrCodeMobile();
+    }
+  }
+
+  // Web download method
+  Future<void> _saveQrCodeWeb() async {
+    try {
+      RenderRepaintBoundary boundary = qrKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+      ui.Image image = await boundary.toImage(pixelRatio: 3);
+      ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      Uint8List pngBytes = byteData!.buffer.asUint8List();
+
+      final blob = html.Blob([pngBytes], 'image/png');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      final anchor = html.AnchorElement()
+        ..href = url
+        ..download = 'qr_code_${DateTime.now().millisecondsSinceEpoch}.png'
+        ..style.display = 'none';
+
+      html.document.body!.append(anchor);
+      anchor.click();
+      anchor.remove();
+      html.Url.revokeObjectUrl(url);
+
+      _showSuccessSnackBar('QR code downloaded!');
+    } catch (e) {
+      print('Error saving QR code on web: $e');
+      _showErrorSnackBar('Error saving QR code: $e');
+    }
+  }
+
+  // Mobile save to gallery method
+  Future<void> _saveQrCodeMobile() async {
+    try {
+      if (await Permission.storage.isDenied) {
+        final status = await Permission.storage.request();
+        if (!status.isGranted) {
+          _showErrorSnackBar('Storage permission denied. Cannot save QR Code.');
+          return;
+        }
+      }
+
+      RenderRepaintBoundary boundary = qrKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+      ui.Image image = await boundary.toImage(pixelRatio: 3);
+      ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      Uint8List pngBytes = byteData!.buffer.asUint8List();
+
+      final result = await ImageGallerySaverPlus.saveImage(
+        pngBytes,
+        quality: 100,
+        name: 'qr_code_${DateTime.now().millisecondsSinceEpoch}',
+      );
+
+      if (result == null || result.isEmpty) {
+        _showErrorSnackBar('Failed to save QR code.');
+      } else {
+        _showSuccessSnackBar('QR code saved to gallery!');
+      }
+    } catch (e) {
+      print('Error saving QR code: $e');
+      _showErrorSnackBar('Error saving QR code: $e');
+    }
+  }
+
   Future<void> _initializeDashboard() async {
     await Future.wait([
       _loadDashboardStats(),
@@ -189,27 +259,23 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
     ]);
   }
 
-  /// Load dashboard statistics from backend - UPDATED TO USE NEW SERVICE
   Future<void> _loadDashboardStats() async {
     try {
       setState(() {
         isDashboardLoading = true;
       });
 
-      // Use the new AdminBackendServices
       final response = await AdminBackendServices.getDashboardStats();
-      
       print("Dashboard Stats API Response: $response");
 
-      // Check for token validation issues
-      if (response['status'] == false && 
+      if (response['status'] == false &&
           (response['Message']?.toString().contains('Unauthorized') == true ||
-           response['Message']?.toString().contains('Invalid token') == true)) {
+              response['Message']?.toString().contains('Invalid token') == true)) {
         _showErrorSnackBar("Session expired. Please log in again.");
         _redirectToLogin();
         return;
       }
-      
+
       if (response['status'] == true && response['data'] != null) {
         final data = response['data'];
         setState(() {
@@ -220,11 +286,8 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
           isDashboardLoading = false;
         });
       } else {
-        // Handle different response structures
         String errorMessage = response['Message'] ?? response['message'] ?? 'Failed to load dashboard statistics';
         _showErrorSnackBar(errorMessage);
-        
-        // Set default values if API fails
         setState(() {
           totalShops = allShops.length.toString();
           totalPayments = "Rs. 0";
@@ -236,8 +299,6 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
     } catch (e) {
       print('Error loading dashboard stats: $e');
       _showErrorSnackBar('Error loading dashboard data: $e');
-      
-      // Set default values on error
       setState(() {
         totalShops = allShops.length.toString();
         totalPayments = "Rs. 0";
@@ -248,53 +309,42 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
     }
   }
 
-  /// Load shops from API - UPDATED TO USE NEW SERVICE
   Future<void> _loadShops() async {
     try {
       setState(() {
         isShopsLoading = true;
       });
 
-      // Use the new AdminBackendServices
       final response = await AdminBackendServices.getShops();
-      
       print("Shops API Response: $response");
 
-      // Check for token validation issues
-      if (response['status'] == false && 
+      if (response['status'] == false &&
           (response['Message']?.toString().contains('Unauthorized') == true ||
-           response['Message']?.toString().contains('Invalid token') == true)) {
+              response['Message']?.toString().contains('Invalid token') == true)) {
         _showErrorSnackBar("Session expired. Please log in again.");
         _redirectToLogin();
         return;
       }
-      
+
       if (response['status'] == true) {
         setState(() {
-          // Handle different possible response structures
           var responseData = response['data'] ?? response['shops'] ?? response['Data'];
-          
+
           if (responseData is List) {
             allShops = List<Map<String, dynamic>>.from(responseData);
           } else if (responseData is Map && responseData.containsKey('shops')) {
             allShops = List<Map<String, dynamic>>.from(responseData['shops']);
           } else {
-            // If data is directly in response
             allShops = List<Map<String, dynamic>>.from(response['Data'] ?? []);
           }
-          
-          // Update total shops count after loading
+
           totalShops = allShops.length.toString();
-          
           _filterShops();
           isShopsLoading = false;
         });
-        
+
         _showSuccessSnackBar('Shops loaded successfully (${allShops.length} shops)');
-        
-        // Reload dashboard stats after shops are loaded to get accurate count
-        _loadDashboardStats();
-        
+        await _loadDashboardStats();
       } else {
         String errorMessage = response['Message'] ?? response['message'] ?? 'Failed to load shops';
         _showErrorSnackBar(errorMessage);
@@ -315,57 +365,53 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
     }
   }
 
-  /// Filter shops based on search query and selected filter
   void _filterShops() {
     setState(() {
       String query = searchController.text.toLowerCase();
-      
+
       filteredShops = allShops.where((shop) {
-        // Handle different possible field names from API
-        bool matchesSearch = (shop['shop_name']?.toString() ?? shop['name']?.toString() ?? '').toLowerCase().contains(query) ||
-            (shop['br_registration_number']?.toString() ?? shop['br_number']?.toString() ?? '').toLowerCase().contains(query) ||
+        bool matchesSearch = (shop['shop_name']?.toString() ?? shop['name']?.toString() ?? '')
+                .toLowerCase()
+                .contains(query) ||
+            (shop['br_registration_number']?.toString() ?? shop['br_number']?.toString() ?? '')
+                .toLowerCase()
+                .contains(query) ||
             (shop['contact_person']?.toString() ?? shop['owner']?.toString() ?? '').toLowerCase().contains(query) ||
-            (shop['contact_teliphone']?.toString() ?? shop['phone']?.toString() ?? shop['contact_telephone']?.toString() ?? '').toLowerCase().contains(query);
-        
-        bool matchesFilter = selectedFilter == 'All' || 
-            (shop['status']?.toString() ?? 'Active') == selectedFilter;
-        
+            (shop['contact_teliphone']?.toString() ?? shop['phone']?.toString() ?? shop['contact_telephone']?.toString() ?? '')
+                .toLowerCase()
+                .contains(query);
+
+        bool matchesFilter = selectedFilter == 'All' || (shop['status']?.toString() ?? 'Active') == selectedFilter;
+
         return matchesSearch && matchesFilter;
       }).toList();
     });
   }
 
-  /// Refresh all dashboard data
   Future<void> _refreshDashboard() async {
     setState(() {
       isDashboardLoading = true;
       isShopsLoading = true;
     });
-    
+
     await _initializeDashboard();
     _showSuccessSnackBar('Dashboard refreshed successfully');
   }
 
-  // ==================== UI HELPER METHODS ====================
-
   void _showSuccessSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.green,
-        duration: const Duration(seconds: 3),
-      ),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(message),
+      backgroundColor: Colors.green,
+      duration: const Duration(seconds: 3),
+    ));
   }
 
   void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-        duration: const Duration(seconds: 4),
-      ),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(message),
+      backgroundColor: Colors.red,
+      duration: const Duration(seconds: 4),
+    ));
   }
 
   @override
@@ -389,7 +435,6 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
                 Column(
                   children: [
                     const SizedBox(height: 80),
-                    // Admin Logo
                     ClipOval(
                       child: SizedBox(
                         width: 120,
@@ -440,10 +485,7 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
                 children: [
                   // Admin Top bar
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 10,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       boxShadow: const [
@@ -469,12 +511,11 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
                         ),
                         Row(
                           children: [
-                            // Connection status indicator
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
-                                color: (!isDashboardLoading && !isShopsLoading) 
-                                    ? Colors.green.shade100 
+                                color: (!isDashboardLoading && !isShopsLoading)
+                                    ? Colors.green.shade100
                                     : Colors.orange.shade100,
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -482,27 +523,23 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(
-                                    (!isDashboardLoading && !isShopsLoading) 
-                                        ? Icons.wifi 
-                                        : Icons.sync,
+                                    (!isDashboardLoading && !isShopsLoading) ? Icons.wifi : Icons.sync,
                                     size: 12,
-                                    color: (!isDashboardLoading && !isShopsLoading) 
-                                        ? Colors.green.shade700 
+                                    color: (!isDashboardLoading && !isShopsLoading)
+                                        ? Colors.green.shade700
                                         : Colors.orange.shade700,
                                   ),
                                 ],
                               ),
                             ),
                             const SizedBox(width: 12),
-                            // Refresh button
                             IconButton(
-                              onPressed: (isDashboardLoading || isShopsLoading) 
-                                  ? null 
-                                  : _refreshDashboard,
+                              onPressed:
+                                  (isDashboardLoading || isShopsLoading) ? null : _refreshDashboard,
                               icon: Icon(
                                 Icons.refresh,
-                                color: (isDashboardLoading || isShopsLoading) 
-                                    ? Colors.grey 
+                                color: (isDashboardLoading || isShopsLoading)
+                                    ? Colors.grey
                                     : Colors.blue,
                               ),
                               tooltip: 'Refresh Dashboard',
@@ -512,7 +549,6 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 30),
 
                   // Admin Stats Cards
@@ -551,7 +587,6 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
                             ),
                           ],
                         ),
-
                   const SizedBox(height: 30),
 
                   // Shops Management Section
@@ -589,7 +624,6 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
                                 ),
                                 Row(
                                   children: [
-                                    // Search Field
                                     SizedBox(
                                       width: 300,
                                       child: TextField(
@@ -607,7 +641,8 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
                                           ),
                                           focusedBorder: OutlineInputBorder(
                                             borderRadius: BorderRadius.circular(8),
-                                            borderSide: const BorderSide(color: Color(0xFF014EB2)),
+                                            borderSide:
+                                                const BorderSide(color: Color(0xFF014EB2)),
                                           ),
                                         ),
                                       ),
@@ -617,7 +652,7 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
                               ],
                             ),
                             const SizedBox(height: 20),
-                            
+
                             // Results count
                             Text(
                               'Showing ${filteredShops.length} of ${allShops.length} shops',
@@ -627,7 +662,7 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
                               ),
                             ),
                             const SizedBox(height: 16),
-                            
+
                             // Shops List
                             Expanded(
                               child: isShopsLoading
@@ -638,13 +673,17 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
                                             mainAxisAlignment: MainAxisAlignment.center,
                                             children: [
                                               Icon(
-                                                allShops.isEmpty ? Icons.error_outline : Icons.search_off,
+                                                allShops.isEmpty
+                                                    ? Icons.error_outline
+                                                    : Icons.search_off,
                                                 size: 64,
                                                 color: Colors.grey.shade400,
                                               ),
                                               const SizedBox(height: 16),
                                               Text(
-                                                allShops.isEmpty ? 'No shops available' : 'No shops found',
+                                                allShops.isEmpty
+                                                    ? 'No shops available'
+                                                    : 'No shops found',
                                                 style: TextStyle(
                                                   fontSize: 18,
                                                   color: Colors.grey.shade600,
@@ -652,7 +691,7 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
                                               ),
                                               const SizedBox(height: 8),
                                               Text(
-                                                allShops.isEmpty 
+                                                allShops.isEmpty
                                                     ? 'Check your connection or try refreshing'
                                                     : 'Try adjusting your search criteria',
                                                 style: TextStyle(
@@ -696,12 +735,7 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
     );
   }
 
-  // ==================== UI WIDGETS ====================
-
-  /// Shop Card Widget with QR Code functionality - UPDATED
   Widget shopCard(Map<String, dynamic> shop) {
-    String qrData = _generateQRData(shop);
-    
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -712,28 +746,7 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
       ),
       child: Row(
         children: [
-          // QR Code Preview
-          // Container(
-          //   width: 80,
-          //   height: 80,
-          //   padding: const EdgeInsets.all(8),
-          //   decoration: BoxDecoration(
-          //     color: Colors.white,
-          //     borderRadius: BorderRadius.circular(8),
-          //     border: Border.all(color: Colors.grey.shade300),
-          //   ),
-          //   child: QrImageView(
-          //     data: qrData,
-          //     version: QrVersions.auto,
-          //     size: 64.0,
-          //     backgroundColor: Colors.white,
-          //     foregroundColor: Colors.black,
-          //   ),
-          // ),
-          
           const SizedBox(width: 16),
-          
-          // Shop Details - Updated to handle API response fields
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -749,32 +762,15 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
                       ),
                     ),
                     const Spacer(),
-                    // QR Code Actions
                     Row(
                       children: [
                         IconButton(
                           onPressed: () => _showQRDialog(shop),
                           icon: const Icon(Icons.qr_code, color: Color(0xFF014EB2)),
                           tooltip: 'View QR Code',
-                          constraints: const BoxConstraints(
-                            minWidth: 32,
-                            minHeight: 32,
-                          ),
+                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                           padding: const EdgeInsets.all(4),
                         ),
-                        // IconButton(
-                        //   onPressed: () {
-                        //     // Add functionality to share QR code
-                        //     _showSuccessSnackBar('QR Code shared for ${shop['shop_name'] ?? shop['name'] ?? 'shop'}');
-                        //   },
-                        //   icon: const Icon(Icons.share, color: Colors.green),
-                        //   tooltip: 'Share QR Code',
-                        //   constraints: const BoxConstraints(
-                        //     minWidth: 32,
-                        //     minHeight: 32,
-                        //   ),
-                        //   padding: const EdgeInsets.all(4),
-                        // ),
                       ],
                     ),
                   ],
@@ -804,7 +800,7 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text(  
+                Text(
                   'Registered: ${shop['register_date']?.toString() ?? shop['created_at']?.toString() ?? 'N/A'}',
                   style: TextStyle(
                     color: Colors.grey.shade500,
@@ -819,39 +815,34 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
     );
   }
 
-  /// Admin Navigation Item
-  /// Admin Navigation Item - UPDATED VERSION
-Widget navItem(IconData icon, String title, bool isSelected) {
-  return Container(
-    margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-    decoration: BoxDecoration(
-      color: isSelected ? Colors.blue.shade700 : Colors.transparent,
-      borderRadius: BorderRadius.circular(12),
-    ),
-    child: ListTile(
-      leading: Icon(icon, color: Colors.white),
-      title: Text(
-        title,
-        style: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.w600,
-          fontSize: 14,
-        ),
+  Widget navItem(IconData icon, String title, bool isSelected) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: isSelected ? Colors.blue.shade700 : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
       ),
-      onTap: () {
-        // 🔹 UPDATED NAVIGATION LOGIC
-        if (title == "Dashboard") {
-          // Stay on current page or refresh
-          print('Already on Dashboard');
-        } else if (title == "Collectors") {
-          // Navigate to Collector Management
-          Navigator.pushNamed(context, '/CollectorManagement');
-        } 
-      },
-    ),
-  );
-}
-  /// Admin Logout Button
+      child: ListTile(
+        leading: Icon(icon, color: Colors.white),
+        title: Text(
+          title,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+          ),
+        ),
+        onTap: () {
+          if (title == "Dashboard") {
+            print('Already on Dashboard');
+          } else if (title == "Collectors") {
+            Navigator.pushNamed(context, '/CollectorManagement');
+          }
+        },
+      ),
+    );
+  }
+
   Widget logoutButton() {
     return Container(
       width: double.infinity,
@@ -861,7 +852,6 @@ Widget navItem(IconData icon, String title, bool isSelected) {
       ),
       child: TextButton.icon(
         onPressed: () async {
-          // Clear token and redirect to login - Updated this function
           final prefs = await SharedPreferences.getInstance();
           await prefs.clear();
           Navigator.pushReplacementNamed(context, '/Login');
@@ -872,7 +862,6 @@ Widget navItem(IconData icon, String title, bool isSelected) {
     );
   }
 
-  /// Admin Dashboard Card with Icon
   Widget adminDashboardCard(String title, String content, IconData icon, Color bgColor, Color iconColor) {
     return Expanded(
       child: Container(

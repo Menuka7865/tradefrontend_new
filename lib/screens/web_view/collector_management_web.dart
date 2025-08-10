@@ -230,6 +230,83 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
     }
   }
 
+  /// Delete collector with confirmation dialog
+  Future<void> _deleteCollector(Map collector) async {
+    // Show confirmation dialog first
+    bool? confirmDelete = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Delete Collector'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Are you sure you want to delete this collector?'),
+              const SizedBox(height: 12),
+              Text(
+                'Username: ${collector['user_code'] ?? collector['usercode'] ?? 'N/A'}',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              Text('Email: ${collector['email'] ?? 'N/A'}'),
+              const SizedBox(height: 12),
+              const Text(
+                'This action cannot be undone.',
+                style: TextStyle(color: Colors.red, fontWeight: FontWeight.w500),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+
+    // If user confirmed deletion
+    if (confirmDelete == true) {
+      try {
+        setState(() {
+          isActionLoading = true;
+        });
+
+        String collectorId = (collector['id'] ?? collector['collector_id']).toString();
+        
+        final response = await AdminBackendServices.deleteCollector(
+          collectorId: collectorId,
+        );
+
+        print("Delete Collector API Response: $response");
+
+        if (response['status'] == true) {
+          _showSuccessSnackBar('Collector deleted successfully!');
+          await _loadCollectors(); // Refresh the list
+        } else {
+          String errorMessage = response['Message'] ?? response['message'] ?? 'Failed to delete collector';
+          _showErrorSnackBar(errorMessage);
+        }
+      } catch (e) {
+        print('Error deleting collector: $e');
+        _showErrorSnackBar('Error deleting collector: $e');
+      } finally {
+        setState(() {
+          isActionLoading = false;
+        });
+      }
+    }
+  }
+
   /// Filter collectors based on search query
   void _filterCollectors() {
     setState(() {
@@ -320,8 +397,12 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
 
   /// Show Edit Collector Dialog pre-filled with collector data
   void _showEditCollectorDialog(Map collector) {
-    TextEditingController editUsercodeController = TextEditingController(text: collector['user_code'] ?? collector['usercode'] ?? '');
-    TextEditingController editEmailController = TextEditingController(text: collector['email'] ?? '');
+    TextEditingController editUsercodeController = TextEditingController(
+      text: collector['user_code'] ?? collector['usercode'] ?? ''
+    );
+    TextEditingController editEmailController = TextEditingController(
+      text: collector['email'] ?? ''
+    );
     TextEditingController editPasswordController = TextEditingController();
 
     showDialog(
@@ -342,6 +423,7 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
                       decoration: const InputDecoration(
                         labelText: 'Usercode',
                         prefixIcon: Icon(Icons.person),
+                        border: OutlineInputBorder(),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -351,6 +433,7 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
                       decoration: const InputDecoration(
                         labelText: 'Email',
                         prefixIcon: Icon(Icons.email),
+                        border: OutlineInputBorder(),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -358,8 +441,10 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
                       controller: editPasswordController,
                       obscureText: true,
                       decoration: const InputDecoration(
-                        labelText: 'Password ',
+                        labelText: 'New Password (Optional)',
                         prefixIcon: Icon(Icons.lock),
+                        border: OutlineInputBorder(),
+                        helperText: 'Leave empty to keep current password',
                       ),
                     ),
                   ],
@@ -414,7 +499,10 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
                       ? const SizedBox(
                           width: 16,
                           height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2, 
+                            color: Colors.white
+                          ),
                         )
                       : const Text('Save'),
                 ),
@@ -446,6 +534,8 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
         password: password,
       );
 
+      print("Update Collector API Response: $response");
+
       if (response['status'] == true) {
         return true;
       } else {
@@ -454,6 +544,7 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
         return false;
       }
     } catch (e) {
+      print('Error updating collector: $e');
       _showErrorSnackBar('Error updating collector: $e');
       return false;
     } finally {
@@ -916,7 +1007,7 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
     );
   }
 
-  /// Collector Card Widget
+  /// Updated Collector Card Widget with working Edit and Delete buttons
   Widget collectorCard(Map collector) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -939,6 +1030,7 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
             child: const Icon(Icons.person, size: 30, color: Color(0xFF014EB2)),
           ),
           const SizedBox(width: 16),
+          
           // Collector Details
           Expanded(
             child: Column(
@@ -946,7 +1038,11 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
               children: [
                 Text(
                   collector['user_code']?.toString() ?? collector['usercode']?.toString() ?? 'N/A',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold, 
+                    fontSize: 16, 
+                    color: Colors.black87
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -970,21 +1066,29 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
           // Action buttons (Edit and Delete)
           Row(
             children: [
+              // Edit Button
               IconButton(
-                onPressed: () {
+                onPressed: isActionLoading ? null : () {
                   _showEditCollectorDialog(collector);
                 },
-                icon: const Icon(Icons.edit, color: Colors.orange),
+                icon: Icon(
+                  Icons.edit, 
+                  color: isActionLoading ? Colors.grey : Colors.orange
+                ),
                 tooltip: 'Edit Collector',
                 constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                 padding: const EdgeInsets.all(4),
               ),
+              
+              // Delete Button
               IconButton(
-                onPressed: () {
-                  // TODO: Add delete collector functionality if you want
-                  _showSuccessSnackBar('Delete collector functionality is not implemented yet.');
+                onPressed: isActionLoading ? null : () {
+                  _deleteCollector(collector);
                 },
-                icon: const Icon(Icons.delete, color: Colors.red),
+                icon: Icon(
+                  Icons.delete, 
+                  color: isActionLoading ? Colors.grey : Colors.red
+                ),
                 tooltip: 'Delete Collector',
                 constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                 padding: const EdgeInsets.all(4),

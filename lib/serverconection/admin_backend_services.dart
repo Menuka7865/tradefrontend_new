@@ -181,85 +181,93 @@ class AdminBackendServices {
   }
 
   
-  /// 🔹 Delete Collector (Optional - for future use)
-  static Future<Map<String, dynamic>> deleteCollector({
-    required String collectorId,
-  }) async {
-    final token = await _getToken();
+  // Corrected Delete Collector Function
+static Future<Map<String, dynamic>> deleteCollector({
+  required String collectorId,
+}) async {
+  final token = await _getToken();
 
-    final url = Uri.parse("http://app.chilawtradeassociation.com/tradeApi/index.php");
-    final body = jsonEncode({
-      "type": "delete_collector",
-      "loged_user_id": "52",
-      "Id": collectorId,
-    });
+  final url = Uri.parse("http://app.chilawtradeassociation.com/tradeApi/index.php");
+  final body = jsonEncode({
+    "type": "delete_collector",
+    "loged_user_id": "52",
+    "user_id": collectorId,  
+  });
 
-    try {
-      final response = await http.post(
-        url,
-        body: body,
-        headers: {
-          'Content-Type': 'application/json',
-          if (token != null) 'Authorization': 'Bearer $token',
-        },
-      );
+  try {
+    final response = await http.post(
+      url,
+      body: body,
+      headers: {
+        'Content-Type': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      },
+    );
 
-      print("deleteCollector Status Code: ${response.statusCode}");
-      print("deleteCollector Body: ${response.body}");
+    print("deleteCollector Status Code: ${response.statusCode}");
+    print("deleteCollector Body: ${response.body}");
 
-      if (response.statusCode == 401) {
-        return {"status": false, "Message": "Unauthorized - Please log in again"};
-      }
-
-      return jsonDecode(response.body);
-    } catch (e) {
-      print("deleteCollector API Error: $e");
-      return {"status": false, "Message": "Connection error: $e"};
+    if (response.statusCode == 401) {
+      return {"status": false, "Message": "Unauthorized - Please log in again"};
     }
+
+    return jsonDecode(response.body);
+  } catch (e) {
+    print("deleteCollector API Error: $e");
+    return {"status": false, "Message": "Connection error: $e"};
+  }
+}
+
+// Corrected Update Collector Function
+static Future<Map<String, dynamic>> updateCollector({
+  required String collectorId,
+  required String usercode,
+  required String email,
+  String? password,
+}) async {
+  final token = await _getToken();
+
+  final url = Uri.parse("http://app.chilawtradeassociation.com/tradeApi/index.php");
+  
+  // Build the request body with correct parameter names
+  Map<String, dynamic> requestBody = {
+    "type": "update_collector",
+    "loged_user_id": "52",
+    "user_id": collectorId,        
+    "user_name": usercode,         
+    "email": email,
+  };
+
+  // Only include password if it's provided and not empty
+  if (password != null && password.isNotEmpty) {
+    requestBody["password"] = password;
   }
 
-  //Update Collector (Optional - for future use)
-  static Future<Map<String, dynamic>> updateCollector({
-    required String collectorId,
-    required String usercode,
-    required String email,
-     String? password,
-  }) async {
-    final token = await _getToken();
+  final body = jsonEncode(requestBody);
 
-    final url = Uri.parse("http://app.chilawtradeassociation.com/tradeApi/index.php");
-    final body = jsonEncode({
-      "type": "update_collector",
-      "loged_user_id": "52",
-      "Id": collectorId,
-      "user_code": usercode,
-      "email": email,
-      "password": password,
-    });
+  try {
+    final response = await http.post(
+      url,
+      body: body,
+      headers: {
+        'Content-Type': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      },
+    );
 
-    try {
-      final response = await http.post(
-        url,
-        body: body,
-        headers: {
-          'Content-Type': 'application/json',
-          if (token != null) 'Authorization': 'Bearer $token',
-        },
-      );
+    print("updateCollector Status Code: ${response.statusCode}");
+    print("updateCollector Body: ${response.body}");
 
-      print("updateCollector Status Code: ${response.statusCode}");
-      print("updateCollector Body: ${response.body}");
-
-      if (response.statusCode == 401) {
-        return {"status": false, "Message": "Unauthorized - Please log in again"};
-      }
-
-      return jsonDecode(response.body);
-    } catch (e) {
-      print("updateCollector API Error: $e");
-      return {"status": false, "Message": "Connection error: $e"};
+    if (response.statusCode == 401) {
+      return {"status": false, "Message": "Unauthorized - Please log in again"};
     }
+
+    return jsonDecode(response.body);
+  } catch (e) {
+    print("updateCollector API Error: $e");
+    return {"status": false, "Message": "Connection error: $e"};
   }
+}
 }
 
 
