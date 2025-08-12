@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class CollectorManagementWeb extends StatefulWidget {
   const CollectorManagementWeb({super.key});
+
   @override
   State createState() => _CollectorManagementWebState();
 }
@@ -15,8 +16,8 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
   String monthlyPayment = "Loading...";
 
   // Collector data and search functionality
-  List<Map> allCollectors = [];
-  List<Map> filteredCollectors = [];
+  List allCollectors = [];
+  List filteredCollectors = [];
   TextEditingController searchController = TextEditingController();
 
   // Add collector form controllers
@@ -33,6 +34,7 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
   void initState() {
     super.initState();
     searchController.addListener(_filterCollectors);
+
     _validateTokenAndInitialize();
   }
 
@@ -45,18 +47,20 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
     super.dispose();
   }
 
-  /// Validate token before initializing dashboard
   Future _validateTokenAndInitialize() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString("auth_token");
+
       if (token == null || token.isEmpty) {
         _showErrorSnackBar("No authentication token found. Please log in again.");
         _redirectToLogin();
         return;
       }
+
       // Validate token by making a test API call
-      final response = await AdminBackendServices.getDashboardStats();
+      final response = await AdminBackendServices.getCollectorStats();
+
       if (response['status'] == false &&
           (response['Message']?.toString().contains('Unauthorized') == true ||
               response['Message']?.toString().contains('Invalid token') == true)) {
@@ -64,6 +68,7 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
         _redirectToLogin();
         return;
       }
+
       // If token is valid, initialize dashboard
       _initializeDashboard();
     } catch (e) {
@@ -73,49 +78,59 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
     }
   }
 
-  /// Redirect to login page
   void _redirectToLogin() {
     Navigator.pushReplacementNamed(context, '/Login');
   }
 
-  /// Initialize dashboard by loading all necessary data
   Future _initializeDashboard() async {
     await Future.wait([_loadDashboardStats(), _loadCollectors()]);
   }
 
-  /// Load dashboard statistics from backend
   Future _loadDashboardStats() async {
     try {
       setState(() {
         isDashboardLoading = true;
       });
 
-      final response = await AdminBackendServices.getCollectorStats();
-      print("Collector Stats API Response: $response");
+      final collectorStatsResponse = await AdminBackendServices.getCollectorStats();
+      print("Collector Stats API Response: $collectorStatsResponse");
 
-      if (response['status'] == false &&
-          (response['Message']?.toString().contains('Unauthorized') == true ||
-              response['Message']?.toString().contains('Invalid token') == true)) {
+      if (collectorStatsResponse['status'] == false &&
+          (collectorStatsResponse['Message']?.toString().contains('Unauthorized') == true ||
+              collectorStatsResponse['Message']?.toString().contains('Invalid token') == true)) {
         _showErrorSnackBar("Session expired. Please log in again.");
         _redirectToLogin();
         return;
       }
 
-      if (response['status'] == true && response['data'] != null) {
-        final data = response['data'];
-        setState(() {
-          totalCollectors = data['total_collectors']?.toString() ?? "0";
-          monthlyPayment = data['monthly_payment']?.toString() ?? "0";
-          isDashboardLoading = false;
-        });
+      if (collectorStatsResponse['status'] == true && collectorStatsResponse['data'] != null) {
+        final data = collectorStatsResponse['data'];
+        totalCollectors = data['total_collectors']?.toString() ?? "0";
       } else {
-        // Handle different response or default values
-        setState(() {
-          totalCollectors = allCollectors.length.toString();
-          monthlyPayment = "0";
-          isDashboardLoading = false;
-        });
+        totalCollectors = allCollectors.length.toString();
       }
+
+      final monthlyPaymentResponse = await AdminBackendServices.getmonthlypayment();
+      print("Monthly Payment API Response: $monthlyPaymentResponse");
+
+      String payment = "0";
+      if (monthlyPaymentResponse['status'] == true) {
+        final data = monthlyPaymentResponse['data'];
+        if (data is List && data.isNotEmpty) {
+          final firstItem = data[0];
+          if (firstItem is Map && firstItem.containsKey('amount')) {
+            payment = firstItem['amount']?.toString() ?? "0";
+          }
+        } else if (data is Map) {
+          payment = data['amount']?.toString() ?? "0";
+        }
+      }
+      print("Parsed monthly payment: $payment");
+      monthlyPayment = payment;
+
+      setState(() {
+        isDashboardLoading = false;
+      });
     } catch (e) {
       print('Error loading collector stats: $e');
       _showErrorSnackBar('Error loading dashboard data: $e');
@@ -127,7 +142,6 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
     }
   }
 
-  /// Load collectors from API
   Future _loadCollectors() async {
     try {
       setState(() {
@@ -150,20 +164,20 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
           var responseData = response['data'] ?? response['collectors'] ?? response['Data'];
 
           if (responseData is List) {
-            allCollectors = List<Map>.from(responseData);
+            allCollectors = List.from(responseData);
           } else if (responseData is Map && responseData.containsKey('collectors')) {
-            allCollectors = List<Map>.from(responseData['collectors']);
+            allCollectors = List.from(responseData['collectors']);
           } else {
-            allCollectors = List<Map>.from(response['Data'] ?? []);
+            allCollectors = List.from(response['Data'] ?? []);
           }
 
           totalCollectors = allCollectors.length.toString();
+
           _filterCollectors();
           isCollectorsLoading = false;
         });
-
         _showSuccessSnackBar('Collectors loaded successfully (${allCollectors.length} collectors)');
-        await _loadDashboardStats(); // Reload dashboard stats
+        await _loadDashboardStats();
       } else {
         String errorMessage = response['Message'] ?? response['message'] ?? 'Failed to load collectors';
         _showErrorSnackBar(errorMessage);
@@ -184,7 +198,6 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
     }
   }
 
-  /// Add new collector
   Future _addCollector() async {
     if (usernameController.text.trim().isEmpty ||
         emailController.text.trim().isEmpty ||
@@ -208,6 +221,7 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
         email: emailController.text.trim(),
         password: passwordController.text.trim(),
       );
+
       print("Add Collector API Response: $response");
 
       if (response['status'] == true) {
@@ -230,10 +244,8 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
     }
   }
 
-  /// Delete collector with confirmation dialog
-  Future<void> _deleteCollector(Map collector) async {
-    // Show confirmation dialog first
-    bool? confirmDelete = await showDialog<bool>(
+  Future _deleteCollector(Map collector) async {
+    bool? confirmDelete = await showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
@@ -257,16 +269,10 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
             ],
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
-            ),
+            TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
             ElevatedButton(
               onPressed: () => Navigator.of(context).pop(true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-              ),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
               child: const Text('Delete'),
             ),
           ],
@@ -274,7 +280,6 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
       },
     );
 
-    // If user confirmed deletion
     if (confirmDelete == true) {
       try {
         setState(() {
@@ -282,16 +287,14 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
         });
 
         String collectorId = (collector['id'] ?? collector['collector_id']).toString();
-        
-        final response = await AdminBackendServices.deleteCollector(
-          collectorId: collectorId,
-        );
+
+        final response = await AdminBackendServices.deleteCollector(collectorId: collectorId);
 
         print("Delete Collector API Response: $response");
 
         if (response['status'] == true) {
           _showSuccessSnackBar('Collector deleted successfully!');
-          await _loadCollectors(); // Refresh the list
+          await _loadCollectors();
         } else {
           String errorMessage = response['Message'] ?? response['message'] ?? 'Failed to delete collector';
           _showErrorSnackBar(errorMessage);
@@ -307,7 +310,6 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
     }
   }
 
-  /// Filter collectors based on search query
   void _filterCollectors() {
     setState(() {
       String query = searchController.text.toLowerCase();
@@ -319,17 +321,16 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
     });
   }
 
-  /// Refresh dashboard data
   Future _refreshDashboard() async {
     setState(() {
       isDashboardLoading = true;
       isCollectorsLoading = true;
     });
+
     await _initializeDashboard();
     _showSuccessSnackBar('Dashboard refreshed successfully');
   }
 
-  // Snack bar helper methods
   void _showSuccessSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: Colors.green, duration: const Duration(seconds: 3)),
@@ -342,7 +343,28 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
     );
   }
 
-  /// Show Edit Monthly Payment Dialog
+  void _showLoadingSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation(Colors.white),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Text(message),
+          ],
+        ),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
   void _showEditMonthlyPaymentDialog() {
     TextEditingController paymentController = TextEditingController(text: monthlyPayment);
 
@@ -353,7 +375,7 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
           title: const Text('Edit Monthly Payment'),
           content: TextField(
             controller: paymentController,
-            keyboardType: TextInputType.number,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: const InputDecoration(
               labelText: 'Monthly Payment',
               hintText: 'Enter new monthly payment',
@@ -375,17 +397,23 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
                 }
 
                 Navigator.of(context).pop();
+                _showLoadingSnackBar('Updating payment...');
 
-                setState(() {
-                  monthlyPayment = newPayment;
-                  // TODO: Call your API to save updated monthly payment
-                });
+                try {
+                  final response = await AdminBackendServices.updatePayment(newAmount: newPayment);
 
-                // Example placeholder:
-                // final response = await AdminBackendServices.updateMonthlyPayment(newPayment);
-                // Handle API response accordingly.
-
-                _showSuccessSnackBar('Monthly payment updated to $newPayment');
+                  if (response['status'] == true) {
+                    // Refresh data from backend after update
+                    await _loadDashboardStats();
+                    _showSuccessSnackBar('Monthly payment updated to $newPayment');
+                  } else {
+                    String errorMessage = response['Message'] ?? 'Failed to update payment';
+                    _showErrorSnackBar(errorMessage);
+                  }
+                } catch (e) {
+                  _showErrorSnackBar('Connection error. Please try again.');
+                  print('Update payment error: $e');
+                }
               },
               child: const Text('Save'),
             ),
@@ -395,13 +423,12 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
     );
   }
 
-  /// Show Edit Collector Dialog pre-filled with collector data
   void _showEditCollectorDialog(Map collector) {
     TextEditingController editUsercodeController = TextEditingController(
-      text: collector['user_code'] ?? collector['usercode'] ?? ''
+      text: collector['user_code'] ?? collector['usercode'] ?? '',
     );
     TextEditingController editEmailController = TextEditingController(
-      text: collector['email'] ?? ''
+      text: collector['email'] ?? '',
     );
     TextEditingController editPasswordController = TextEditingController();
 
@@ -409,7 +436,6 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
       context: context,
       builder: (context) {
         bool isUpdating = false;
-
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             return AlertDialog(
@@ -463,11 +489,11 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
                           String editedEmail = editEmailController.text.trim();
                           String editedPassword = editPasswordController.text.trim();
 
-                          // Validate input
                           if (editedUsercode.isEmpty || editedEmail.isEmpty) {
                             _showErrorSnackBar('Usercode and Email cannot be empty.');
                             return;
                           }
+
                           if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(editedEmail)) {
                             _showErrorSnackBar('Enter a valid email address.');
                             return;
@@ -477,7 +503,6 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
                             isUpdating = true;
                           });
 
-                          // Call backend update method
                           bool success = await _updateCollector(
                             collectorId: (collector['id'] ?? collector['collector_id']).toString(),
                             usercode: editedUsercode,
@@ -499,10 +524,7 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
                       ? const SizedBox(
                           width: 16,
                           height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2, 
-                            color: Colors.white
-                          ),
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                         )
                       : const Text('Save'),
                 ),
@@ -514,8 +536,6 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
     );
   }
 
-  /// Call your backend API to update collector details.
-  /// Returns true if update was successful.
   Future<bool> _updateCollector({
     required String collectorId,
     required String usercode,
@@ -526,16 +546,13 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
       setState(() {
         isActionLoading = true;
       });
-
       final response = await AdminBackendServices.updateCollector(
         collectorId: collectorId,
         usercode: usercode,
         email: email,
         password: password,
       );
-
       print("Update Collector API Response: $response");
-
       if (response['status'] == true) {
         return true;
       } else {
@@ -575,7 +592,6 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
                 Column(
                   children: [
                     const SizedBox(height: 80),
-                    // Admin Logo
                     ClipOval(
                       child: SizedBox(
                         width: 120,
@@ -678,6 +694,7 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
                       ],
                     ),
                   ),
+
                   const SizedBox(height: 30),
 
                   // Admin Stats Cards
@@ -686,7 +703,6 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
                       : Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            // Total Collectors card
                             adminDashboardCard(
                               "Total Collectors",
                               totalCollectors,
@@ -695,7 +711,6 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
                               Colors.blue,
                             ),
 
-                            // Modified Monthly Payment card with edit button
                             Expanded(
                               child: Container(
                                 margin: const EdgeInsets.symmetric(horizontal: 10),
@@ -730,13 +745,11 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
                                           ),
                                           Row(
                                             children: [
-                                              Icon(Icons.payment, color: Colors.green, size: 24),
+                                              const Icon(Icons.payment, color: Colors.green, size: 24),
                                               IconButton(
                                                 icon: const Icon(Icons.edit, color: Colors.orange),
                                                 tooltip: 'Edit Monthly Payment',
-                                                onPressed: () {
-                                                  _showEditMonthlyPaymentDialog();
-                                                },
+                                                onPressed: _showEditMonthlyPaymentDialog,
                                               ),
                                             ],
                                           ),
@@ -786,7 +799,6 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
                         const SizedBox(height: 16),
                         Row(
                           children: [
-                            // Username field
                             Expanded(
                               child: TextField(
                                 controller: usernameController,
@@ -810,8 +822,6 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
                               ),
                             ),
                             const SizedBox(width: 16),
-
-                            // Email field
                             Expanded(
                               child: TextField(
                                 controller: emailController,
@@ -836,8 +846,6 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
                               ),
                             ),
                             const SizedBox(width: 16),
-
-                            // Password field
                             Expanded(
                               child: TextField(
                                 controller: passwordController,
@@ -862,8 +870,6 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
                               ),
                             ),
                             const SizedBox(width: 16),
-
-                            // Add button
                             ElevatedButton.icon(
                               onPressed: isActionLoading ? null : _addCollector,
                               icon: isActionLoading
@@ -888,6 +894,7 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
                       ],
                     ),
                   ),
+
                   const SizedBox(height: 30),
 
                   // Collectors List Section
@@ -911,7 +918,6 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Header with search
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
@@ -948,7 +954,6 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
                               ],
                             ),
                             const SizedBox(height: 20),
-
                             Text(
                               'Showing ${filteredCollectors.length} of ${allCollectors.length} collectors',
                               style: TextStyle(
@@ -957,7 +962,6 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
                               ),
                             ),
                             const SizedBox(height: 16),
-
                             Expanded(
                               child: isCollectorsLoading
                                   ? const Center(child: CircularProgressIndicator())
@@ -974,14 +978,16 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
                                               const SizedBox(height: 16),
                                               Text(
                                                 allCollectors.isEmpty ? 'No collectors available' : 'No collectors found',
-                                                style: TextStyle(fontSize: 18, color: Colors.grey.shade600),
+                                                style:
+                                                    TextStyle(fontSize: 18, color: Colors.grey.shade600),
                                               ),
                                               const SizedBox(height: 8),
                                               Text(
                                                 allCollectors.isEmpty
                                                     ? 'Add your first collector using the form above'
                                                     : 'Try adjusting your search criteria',
-                                                style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
+                                                style:
+                                                    TextStyle(fontSize: 14, color: Colors.grey.shade500),
                                               ),
                                             ],
                                           ),
@@ -1007,7 +1013,6 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
     );
   }
 
-  /// Updated Collector Card Widget with working Edit and Delete buttons
   Widget collectorCard(Map collector) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -1019,7 +1024,6 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
       ),
       child: Row(
         children: [
-          // Profile Icon
           Container(
             width: 60,
             height: 60,
@@ -1030,19 +1034,13 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
             child: const Icon(Icons.person, size: 30, color: Color(0xFF014EB2)),
           ),
           const SizedBox(width: 16),
-          
-          // Collector Details
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   collector['user_code']?.toString() ?? collector['usercode']?.toString() ?? 'N/A',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold, 
-                    fontSize: 16, 
-                    color: Colors.black87
-                  ),
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -1062,33 +1060,22 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
               ],
             ),
           ),
-
-          // Action buttons (Edit and Delete)
           Row(
             children: [
-              // Edit Button
               IconButton(
                 onPressed: isActionLoading ? null : () {
                   _showEditCollectorDialog(collector);
                 },
-                icon: Icon(
-                  Icons.edit, 
-                  color: isActionLoading ? Colors.grey : Colors.orange
-                ),
+                icon: Icon(Icons.edit, color: isActionLoading ? Colors.grey : Colors.orange),
                 tooltip: 'Edit Collector',
                 constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                 padding: const EdgeInsets.all(4),
               ),
-              
-              // Delete Button
               IconButton(
                 onPressed: isActionLoading ? null : () {
                   _deleteCollector(collector);
                 },
-                icon: Icon(
-                  Icons.delete, 
-                  color: isActionLoading ? Colors.grey : Colors.red
-                ),
+                icon: Icon(Icons.delete, color: isActionLoading ? Colors.grey : Colors.red),
                 tooltip: 'Delete Collector',
                 constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                 padding: const EdgeInsets.all(4),
@@ -1100,7 +1087,6 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
     );
   }
 
-  /// Admin Navigation Item
   Widget navItem(IconData icon, String title, bool isSelected) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -1110,7 +1096,8 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
       ),
       child: ListTile(
         leading: Icon(icon, color: Colors.white),
-        title: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
+        title: Text(title,
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
         onTap: () {
           if (title == "Dashboard") {
             Navigator.pushNamed(context, '/AdminDashboardWeb');
@@ -1122,7 +1109,6 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
     );
   }
 
-  /// Admin Logout Button
   Widget logoutButton() {
     return Container(
       width: double.infinity,
@@ -1142,9 +1128,7 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
     );
   }
 
-  /// Admin Dashboard Card with Icon (used for Total Collectors)
-  Widget adminDashboardCard(
-      String title, String content, IconData icon, Color bgColor, Color iconColor) {
+  Widget adminDashboardCard(String title, String content, IconData icon, Color bgColor, Color iconColor) {
     return Expanded(
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 10),
@@ -1153,11 +1137,7 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
           color: bgColor,
           borderRadius: BorderRadius.circular(12),
           boxShadow: const [
-            BoxShadow(
-              color: Colors.black12,
-              offset: Offset(1, 2),
-              blurRadius: 4,
-            ),
+            BoxShadow(color: Colors.black12, offset: Offset(1, 2), blurRadius: 4),
           ],
         ),
         child: Padding(
@@ -1169,24 +1149,13 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      color: Colors.black87,
-                    ),
-                  ),
+                  Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black87)),
                   Icon(icon, color: iconColor, size: 24),
                 ],
               ),
               Text(
                 content,
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87),
               ),
             ],
           ),

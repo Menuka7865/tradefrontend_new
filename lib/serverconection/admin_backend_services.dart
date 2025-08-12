@@ -268,6 +268,86 @@ static Future<Map<String, dynamic>> updateCollector({
     return {"status": false, "Message": "Connection error: $e"};
   }
 }
+
+//Update monthly payment
+static Future<Map<String, dynamic>> updatePayment({
+  required String newAmount,
+  
+}) async {
+  final token = await _getToken();
+
+  final url = Uri.parse("http://app.chilawtradeassociation.com/tradeApi/index.php");
+  
+  // Build the request body with correct parameter names
+  Map<String, dynamic> requestBody = {
+    "type": "update_monthly_payment",
+    "loged_user_id": "52",
+    "new_amount": newAmount,
+  };
+
+
+
+  final body = jsonEncode(requestBody);
+
+  try {
+    final response = await http.post(
+      url,
+      body: body,
+      headers: {
+        'Content-Type': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      },
+    );
+
+    print("updatePayment Status Code: ${response.statusCode}");
+    print("updatePayment Body: ${response.body}");
+
+    if (response.statusCode == 401) {
+      return {"status": false, "Message": "Unauthorized - Please log in again"};
+    }
+
+    return jsonDecode(response.body);
+  } catch (e) {
+    print("updateCollector API Error: $e");
+    return {"status": false, "Message": "Connection error: $e"};
+  }
+}
+
+//Get Monthly Payment
+static Future<Map<String, dynamic>> getmonthlypayment() async {
+    final token = await _getToken();
+
+    final url = Uri.parse("http://app.chilawtradeassociation.com/tradeApi/index.php");
+    final body = jsonEncode({
+      "type": "show_monthly_payment",
+      "loged_user_id": "52"
+    });
+
+    try {
+      final response = await http.post(
+        url,
+        body: body,
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+
+      print("Getpayment Status Code: ${response.statusCode}");
+      print("Getpayment Body: ${response.body}");
+
+      if (response.statusCode == 401) {
+        return {"status": false, "Message": "Unauthorized - Please log in again"};
+      }
+
+      return jsonDecode(response.body);
+    } catch (e) {
+      print("getCollectorStats API Error: $e");
+      return {"status": false, "Message": "Connection error: $e"};
+    }
+  }
+
+
 }
 
 
