@@ -33,6 +33,10 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
   TextEditingController searchController = TextEditingController();
   String selectedFilter = 'All';
 
+  // Users data for Send Message feature
+  List<Map<String, dynamic>> allUsers = [];
+  bool isUsersLoading = false;
+
   // Loading states
   bool isDashboardLoading = true;
   bool isShopsLoading = true;
@@ -256,6 +260,7 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
     await Future.wait([
       _loadDashboardStats(),
       _loadShops(),
+      _loadUsers(), // Load users on init
     ]);
   }
 
@@ -365,6 +370,33 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
     }
   }
 
+  // Load users for Send Message dropdown
+  Future<void> _loadUsers() async {
+    try {
+      setState(() {
+        isUsersLoading = true;
+      });
+
+      final response = await AdminBackendServices.getUsers(); // You must have this API implemented
+      if (response['status'] == true) {
+        setState(() {
+          allUsers = List<Map<String, dynamic>>.from(response['data']);
+          isUsersLoading = false;
+        });
+      } else {
+        _showErrorSnackBar('Failed to load users');
+        setState(() {
+          isUsersLoading = false;
+        });
+      }
+    } catch (e) {
+      _showErrorSnackBar('Error loading users: $e');
+      setState(() {
+        isUsersLoading = false;
+      });
+    }
+  }
+
   void _filterShops() {
     setState(() {
       String query = searchController.text.toLowerCase();
@@ -412,6 +444,94 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
       backgroundColor: Colors.red,
       duration: const Duration(seconds: 4),
     ));
+  }
+
+  // Show Send Message Dialog with "All" option
+  void _showSendMessageDialog() {
+    String? selectedUserId;
+    TextEditingController messageController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Send Message'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<String>(
+                decoration: const InputDecoration(labelText: 'Select User'),
+                items: [
+                  const DropdownMenuItem<String>(
+                    value: 'all',
+                    child: Text('All'),
+                  ),
+                  ...allUsers.map((user) {
+                    return DropdownMenuItem<String>(
+                      value: user['id'].toString(),
+                      child: Text(user['name'] ?? user['user_name'] ?? 'Unnamed User'),
+                    );
+                  }).toList(),
+                ],
+                onChanged: (value) {
+                  selectedUserId = value;
+                },
+              ),
+              TextField(
+                controller: messageController,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'Message',
+                  hintText: 'Enter your message',
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (selectedUserId == null || messageController.text.trim().isEmpty) {
+                  _showErrorSnackBar('Please select a user and enter a message');
+                  return;
+                }
+
+                try {
+                  Map<String, dynamic> response;
+                  if (selectedUserId == 'all') {
+                    // Send message to all users
+                    response = await AdminBackendServices.sendMessageToAll(
+                      message: messageController.text.trim(),
+                    );
+                  } else {
+                    // Send message to single user
+                    response = await AdminBackendServices.sendMessage(
+                      userId: selectedUserId!,
+                      message: messageController.text.trim(),
+                    );
+                  }
+
+                  if (response['status'] == true) {
+                    _showSuccessSnackBar("Message sent successfully");
+                    Navigator.of(context).pop();
+                  } else {
+                    _showErrorSnackBar(response['Message'] ?? 'Failed to send message');
+                  }
+                } catch (e) {
+                  _showErrorSnackBar('Error sending message: $e');
+                }
+              },
+              child: const Text('Send'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -610,7 +730,7 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Header with search and filter
+                            // Header with search, filter, and Send Message button
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
@@ -622,33 +742,15 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
                                     color: Colors.black87,
                                   ),
                                 ),
-                                Row(
-                                  children: [
-                                    SizedBox(
-                                      width: 300,
-                                      child: TextField(
-                                        controller: searchController,
-                                        decoration: InputDecoration(
-                                          hintText: 'Search shops by name, BR number, or owner...',
-                                          prefixIcon: const Icon(Icons.search),
-                                          border: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(8),
-                                            borderSide: BorderSide(color: Colors.grey.shade300),
-                                          ),
-                                          enabledBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(8),
-                                            borderSide: BorderSide(color: Colors.grey.shade300),
-                                          ),
-                                          focusedBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(8),
-                                            borderSide:
-                                                const BorderSide(color: Color(0xFF014EB2)),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                                ElevatedButton.icon(
+                                  onPressed: isUsersLoading ? null : () => _showSendMessageDialog(),
+                                  icon: const Icon(Icons.send),
+                                  label: const Text("Send Message"),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF014EB2),
+                                    foregroundColor: Colors.white,
+                                  ),
+                                )
                               ],
                             ),
                             const SizedBox(height: 20),

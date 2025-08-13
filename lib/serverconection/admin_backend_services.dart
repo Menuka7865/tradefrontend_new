@@ -347,6 +347,114 @@ static Future<Map<String, dynamic>> getmonthlypayment() async {
     }
   }
 
+  //get users
+  static Future<Map<String, dynamic>> getUsers() async {
+    final token = await _getToken();
+
+    final url = Uri.parse("http://app.chilawtradeassociation.com/tradeApi/index.php");
+    final body = jsonEncode({"type": "list_users","loged_user_id": "52"});
+
+    try {
+      final response = await http.post(
+        url,
+        body: body,
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+
+      print("getShops Status Code: ${response.statusCode}");
+      print("getShops Body: ${response.body}");
+
+      if (response.statusCode == 401) {
+        return {"status": false, "Message": "Unauthorized - Please log in again"};
+      }
+
+      return jsonDecode(response.body);
+    } catch (e) {
+      print("getShops API Error: $e");
+      return {"status": false, "Message": "Connection error: $e"};
+    }
+  }
+
+  //send message to a single user
+  static Future<Map<String, dynamic>> sendMessage({
+    required String userId,
+    required String message,
+  }) async {
+    final token = await _getToken();
+
+    final url = Uri.parse("http://app.chilawtradeassociation.com/tradeApi/index.php");
+    final body = jsonEncode({
+      "type": "send_to_single_trader",
+      "loged_user_id": "52",
+      "trader_id": userId,
+      "message": message,
+    });
+
+    try {
+      final response = await http.post(
+        url,
+        body: body,
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+
+      print("sendMessage Status Code: ${response.statusCode}");
+      print("sendMessage Body: ${response.body}");
+
+      if (response.statusCode == 401) {
+        return {"status": false, "Message": "Unauthorized - Please log in again"};
+      }
+
+      return jsonDecode(response.body);
+    } catch (e) {
+      print("sendMessage API Error: $e");
+      return {"status": false, "Message": "Connection error: $e"};
+    }
+  }
+
+  //send message to all users
+  static Future<Map<String, dynamic>> sendMessageToAll({
+    required String message,
+  }) async {
+    final token = await _getToken();
+
+    final url = Uri.parse("http://app.chilawtradeassociation.com/tradeApi/index.php");
+    final body = jsonEncode({
+      "type": "send_to_all_traders",
+      "loged_user_id": "52",
+      "message": message,
+    });
+
+    try {
+      final response = await http.post(
+        url,
+        body: body,
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+
+      print("sendMessageToAll Status Code: ${response.statusCode}");
+      print("sendMessageToAll Body: ${response.body}");
+
+      if (response.statusCode == 401) {
+        return {"status": false, "Message": "Unauthorized - Please log in again"};
+      }
+
+      return jsonDecode(response.body);
+    } catch (e) {
+      print("sendMessageToAll API Error: $e");
+      return {"status": false, "Message": "Connection error: $e"};
+    }
+  }
+
+
 
 }
 

@@ -40,6 +40,10 @@ class _AdminDashboardMobileState extends State<AdminDashboardMobile> {
   TextEditingController searchController = TextEditingController();
   String selectedFilter = 'All';
 
+  // Users data for Send Message feature
+  List<Map<String, dynamic>> allUsers = [];
+  bool isUsersLoading = false;
+
   // Loading states
   bool isDashboardLoading = true;
   bool isShopsLoading = true;
@@ -246,6 +250,7 @@ class _AdminDashboardMobileState extends State<AdminDashboardMobile> {
     await Future.wait([
       _loadDashboardStats(),
       _loadShops(),
+      _loadUsers(), // Load users on init
     ]);
   }
 
@@ -357,6 +362,33 @@ class _AdminDashboardMobileState extends State<AdminDashboardMobile> {
     }
   }
 
+  // Load users for Send Message dropdown
+  Future<void> _loadUsers() async {
+    try {
+      setState(() {
+        isUsersLoading = true;
+      });
+
+      final response = await AdminBackendServices.getUsers(); // You must have this API implemented
+      if (response['status'] == true) {
+        setState(() {
+          allUsers = List<Map<String, dynamic>>.from(response['data']);
+          isUsersLoading = false;
+        });
+      } else {
+        _showErrorSnackBar('Failed to load users');
+        setState(() {
+          isUsersLoading = false;
+        });
+      }
+    } catch (e) {
+      _showErrorSnackBar('Error loading users: $e');
+      setState(() {
+        isUsersLoading = false;
+      });
+    }
+  }
+
   /// Filter shops based on search query and selected filter
   void _filterShops() {
     setState(() {
@@ -404,6 +436,143 @@ class _AdminDashboardMobileState extends State<AdminDashboardMobile> {
     );
   }
 
+  // Show Send Message Dialog with "All" option - Mobile optimized
+  void _showSendMessageDialog() {
+    String? selectedUserId;
+    TextEditingController messageController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Container(
+            width: MediaQuery.of(context).size.width * 0.9,
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Send Message',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  decoration: InputDecoration(
+                    labelText: 'Select User',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: Colors.grey.shade300),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: Colors.grey.shade300),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: Color(0xFF014EB2)),
+                    ),
+                  ),
+                  items: [
+                    const DropdownMenuItem<String>(
+                      value: 'all',
+                      child: Text('All'),
+                    ),
+                    ...allUsers.map((user) {
+                      return DropdownMenuItem<String>(
+                        value: user['id'].toString(),
+                        child: Text(user['name'] ?? user['user_name'] ?? 'Unnamed User'),
+                      );
+                    }).toList(),
+                  ],
+                  onChanged: (value) {
+                    selectedUserId = value;
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: messageController,
+                  maxLines: 4,
+                  decoration: InputDecoration(
+                    labelText: 'Message',
+                    hintText: 'Enter your message',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: Colors.grey.shade300),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: Colors.grey.shade300),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: Color(0xFF014EB2)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                      child: const Text('Cancel'),
+                    ),
+                    ElevatedButton(
+                      onPressed: () async {
+                        if (selectedUserId == null || messageController.text.trim().isEmpty) {
+                          _showErrorSnackBar('Please select a user and enter a message');
+                          return;
+                        }
+
+                        try {
+                          Map<String, dynamic> response;
+                          if (selectedUserId == 'all') {
+                            // Send message to all users
+                            response = await AdminBackendServices.sendMessageToAll(
+                              message: messageController.text.trim(),
+                            );
+                          } else {
+                            // Send message to single user
+                            response = await AdminBackendServices.sendMessage(
+                              userId: selectedUserId!,
+                              message: messageController.text.trim(),
+                            );
+                          }
+
+                          if (response['status'] == true) {
+                            _showSuccessSnackBar("Message sent successfully");
+                            Navigator.of(context).pop();
+                          } else {
+                            _showErrorSnackBar(response['Message'] ?? 'Failed to send message');
+                          }
+                        } catch (e) {
+                          _showErrorSnackBar('Error sending message: $e');
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF014EB2),
+                        foregroundColor: Colors.white,
+                      ),
+                      child: const Text('Send'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -448,6 +617,12 @@ class _AdminDashboardMobileState extends State<AdminDashboardMobile> {
       ),
       drawer: _buildDrawer(),
       body: _buildBody(),
+      floatingActionButton: FloatingActionButton(
+        onPressed: isUsersLoading ? null : () => _showSendMessageDialog(),
+        backgroundColor: const Color(0xFF014EB2),
+        child: const Icon(Icons.send, color: Colors.white),
+        tooltip: 'Send Message',
+      ),
     );
   }
 

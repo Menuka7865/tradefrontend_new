@@ -4,20 +4,18 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 enum DeviceType { mobile, tablet, desktop }
 
+DeviceType _getDeviceType(BuildContext context) {
+  final width = MediaQuery.of(context).size.width;
+  if (width >= 1000) return DeviceType.desktop;
+  if (width >= 600) return DeviceType.tablet;
+  return DeviceType.mobile;
+}
+
 class CollectorManagementMobile extends StatefulWidget {
   const CollectorManagementMobile({super.key});
 
   @override
-  State createState() => _CollectorManagementMobileState();
-}
-
-// You had this method partially in the code, fix and place inside the State class if needed
-DeviceType _getDeviceType(BuildContext context) {
-  final width = MediaQuery.of(context).size.width;
-
-  if (width >= 1000) return DeviceType.desktop;
-  if (width >= 600) return DeviceType.tablet;
-  return DeviceType.mobile;
+  State<CollectorManagementMobile> createState() => _CollectorManagementMobileState();
 }
 
 class _CollectorManagementMobileState extends State<CollectorManagementMobile> {
@@ -42,6 +40,10 @@ class _CollectorManagementMobileState extends State<CollectorManagementMobile> {
   bool isCollectorsLoading = true;
   bool isActionLoading = false;
 
+  // Mobile specific states
+  bool isDrawerOpen = false;
+  int currentIndex = 1; // Collectors is index 1
+
   // UI state
   bool showAddForm = false;
 
@@ -62,7 +64,7 @@ class _CollectorManagementMobileState extends State<CollectorManagementMobile> {
   }
 
   /// Validate token before initializing dashboard
-  Future _validateTokenAndInitialize() async {
+  Future<void> _validateTokenAndInitialize() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString("auth_token");
@@ -97,7 +99,7 @@ class _CollectorManagementMobileState extends State<CollectorManagementMobile> {
   }
 
   /// Initialize dashboard by loading all necessary data
-  Future _initializeDashboard() async {
+  Future<void> _initializeDashboard() async {
     await Future.wait([
       _loadDashboardStats(),
       _loadCollectors(),
@@ -105,7 +107,7 @@ class _CollectorManagementMobileState extends State<CollectorManagementMobile> {
   }
 
   /// Load dashboard statistics from backend
-  Future _loadDashboardStats() async {
+  Future<void> _loadDashboardStats() async {
     try {
       setState(() {
         isDashboardLoading = true;
@@ -133,8 +135,7 @@ class _CollectorManagementMobileState extends State<CollectorManagementMobile> {
         });
       }
 
-      /// *** IMPORTANT FIX HERE *** ///
-      /// Properly fetch monthly payment from your API response format
+    
 
       final monthlyPaymentResponse = await AdminBackendServices.getmonthlypayment();
       print("Monthly Payment API Response: $monthlyPaymentResponse");
@@ -171,7 +172,7 @@ class _CollectorManagementMobileState extends State<CollectorManagementMobile> {
   }
 
   /// Load collectors from API
-  Future _loadCollectors() async {
+  Future<void> _loadCollectors() async {
     try {
       setState(() {
         isCollectorsLoading = true;
@@ -242,7 +243,7 @@ class _CollectorManagementMobileState extends State<CollectorManagementMobile> {
   }
 
   /// Refresh all dashboard data
-  Future _refreshDashboard() async {
+  Future<void> _refreshDashboard() async {
     setState(() {
       isDashboardLoading = true;
       isCollectorsLoading = true;
@@ -252,7 +253,7 @@ class _CollectorManagementMobileState extends State<CollectorManagementMobile> {
   }
 
   /// Add new collector
-  Future _addCollector() async {
+  Future<void> _addCollector() async {
     if (usernameController.text.trim().isEmpty ||
         emailController.text.trim().isEmpty ||
         passwordController.text.trim().isEmpty) {
@@ -544,7 +545,7 @@ class _CollectorManagementMobileState extends State<CollectorManagementMobile> {
   }
 
   /// Delete collector with confirmation dialog
-  Future _deleteCollector(Map collector) async {
+  Future<void> _deleteCollector(Map collector) async {
     final confirmDelete = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -579,16 +580,49 @@ class _CollectorManagementMobileState extends State<CollectorManagementMobile> {
     }
   }
 
-  /// Build UI
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        title: const Text('Collector Management'),
-        centerTitle: true,
+        elevation: 0,
         backgroundColor: const Color(0xFF014EB2),
+        title: const Text(
+          'Collector Management',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+        ),
+        centerTitle: true,
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu, color: Colors.white),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
+        ),
+        actions: [
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: (!isDashboardLoading && !isCollectorsLoading) ? Colors.green.shade100 : Colors.orange.shade100,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              (!isDashboardLoading && !isCollectorsLoading) ? Icons.wifi : Icons.sync,
+              size: 16,
+              color: (!isDashboardLoading && !isCollectorsLoading) ? Colors.green.shade700 : Colors.orange.shade700,
+            ),
+          ),
+          IconButton(
+            onPressed: (isDashboardLoading || isCollectorsLoading) ? null : _refreshDashboard,
+            icon: Icon(
+              Icons.refresh,
+              color: (isDashboardLoading || isCollectorsLoading) ? Colors.grey.shade300 : Colors.white,
+            ),
+            tooltip: 'Refresh Dashboard',
+          ),
+        ],
       ),
+      drawer: _buildDrawer(),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           setState(() {
@@ -602,61 +636,158 @@ class _CollectorManagementMobileState extends State<CollectorManagementMobile> {
         ),
         tooltip: showAddForm ? 'Close Form' : 'Add Collector',
       ),
-      body: RefreshIndicator(
-        onRefresh: _refreshDashboard,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (isDashboardLoading)
-                const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator()))
-              else
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Collector Overview',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _mobileDashboardCard(
-                            "Total Collectors",
-                            totalCollectors,
-                            Icons.people,
-                            Colors.blue.shade50,
-                            Colors.blue,
-                            showEditButton: false,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _mobileDashboardCard(
-                            "Monthly Payment",
-                            monthlyPayment,
-                            Icons.payment,
-                            Colors.green.shade50,
-                            Colors.green,
-                            showEditButton: true,
-                            onEditPressed: _showEditMonthlyPaymentDialog,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              const SizedBox(height: 24),
-              if (showAddForm) _buildAddCollectorForm(),
-              if (showAddForm) const SizedBox(height: 24),
-              _buildCollectorsSection(),
-            ],
+      body: _buildBody(),
+    );
+  }
+
+  // === Mobile UI Widgets === //
+
+  Widget _buildDrawer() {
+    return Drawer(
+      child: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF014EB2), Color(0xFF000428)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
           ),
         ),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.only(top: 60, bottom: 20),
+              child: Column(
+                children: [
+                  ClipOval(
+                    child: SizedBox(
+                      width: 80,
+                      height: 80,
+                      child: Image.asset(
+                        'assets/chilaw.jpg',
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          color: Colors.grey.shade300,
+                          child: const Icon(Icons.admin_panel_settings, size: 40, color: Colors.grey),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'ADMIN PANEL',
+                    style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Column(
+                children: [
+                  _drawerItem(Icons.dashboard, "Dashboard", 0),
+                  _drawerItem(Icons.people, "Collectors", 1),
+                ],
+              ),
+            ),
+            Container(
+              margin: const EdgeInsets.all(16),
+              width: double.infinity,
+              decoration: BoxDecoration(color: Colors.red.shade600, borderRadius: BorderRadius.circular(12)),
+              child: TextButton.icon(
+                onPressed: () async {
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.clear();
+                  Navigator.pushReplacementNamed(context, '/Login');
+                },
+                icon: const Icon(Icons.logout, color: Colors.white),
+                label: const Text("Logout", style: TextStyle(color: Colors.white)),
+              ),
+            ),
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _drawerItem(IconData icon, String title, int index) {
+    bool isSelected = currentIndex == index;
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(color: isSelected ? Colors.blue.shade700 : Colors.transparent, borderRadius: BorderRadius.circular(12)),
+      child: ListTile(
+        leading: Icon(icon, color: Colors.white),
+        title: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
+        onTap: () {
+          setState(() {
+            currentIndex = index;
+          });
+          Navigator.pop(context);
+          if (title == "Dashboard") {
+            Navigator.pushReplacementNamed(context, '/AdminDashboardMobile');
+          } else if (title == "Collectors") {
+            Navigator.pushReplacementNamed(context, '/CollectorManagementMobile');
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    return RefreshIndicator(
+      onRefresh: _refreshDashboard,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildDashboardStats(),
+            const SizedBox(height: 24),
+            if (showAddForm) _buildAddCollectorForm(),
+            if (showAddForm) const SizedBox(height: 24),
+            _buildCollectorsSection(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDashboardStats() {
+    if (isDashboardLoading) {
+      return const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator()));
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Collector Overview', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: _mobileDashboardCard(
+                "Total Collectors",
+                totalCollectors,
+                Icons.people,
+                Colors.blue.shade50,
+                Colors.blue,
+                showEditButton: false,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _mobileDashboardCard(
+                "Monthly Payment",
+                monthlyPayment,
+                Icons.payment,
+                Colors.green.shade50,
+                Colors.green,
+                showEditButton: true,
+                onEditPressed: _showEditMonthlyPaymentDialog,
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -671,42 +802,31 @@ class _CollectorManagementMobileState extends State<CollectorManagementMobile> {
   }) {
     return Container(
       height: 100,
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: const [BoxShadow(color: Colors.black12, offset: Offset(0, 2), blurRadius: 4)],
-      ),
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black87),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
+      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(12), boxShadow: const [BoxShadow(color: Colors.black12, offset: Offset(0, 2), blurRadius: 4)]),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.black87), maxLines: 2, overflow: TextOverflow.ellipsis)),
+              Row(
+                children: [
+                  Icon(icon, color: iconColor, size: 20),
+                  if (showEditButton && onEditPressed != null) ...[
+                    const SizedBox(width: 4),
+                    GestureDetector(
+                      onTap: onEditPressed,
+                      child: Icon(Icons.edit, color: Colors.orange, size: 16),
+                    ),
+                  ],
+                ],
               ),
-              Icon(icon, color: iconColor, size: 20),
-              if (showEditButton && onEditPressed != null) ...[
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.edit, color: Colors.orange, size: 20),
-                  tooltip: 'Edit $title',
-                  onPressed: onEditPressed,
-                ),
-              ],
-            ],
-          ),
-          Text(
-            content,
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87),
-          ),
-        ],
+            ]),
+            Text(content, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+          ],
+        ),
       ),
     );
   }
@@ -716,66 +836,71 @@ class _CollectorManagementMobileState extends State<CollectorManagementMobile> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2))],
+        boxShadow: const [BoxShadow(color: Colors.black12, offset: Offset(0, 2), blurRadius: 6, spreadRadius: 2)],
       ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Add New Collector',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: usernameController,
-            decoration: InputDecoration(
-              labelText: 'Usercode',
-              prefixIcon: const Icon(Icons.person),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: emailController,
-            decoration: InputDecoration(
-              labelText: 'Email',
-              prefixIcon: const Icon(Icons.email),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            keyboardType: TextInputType.emailAddress,
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: passwordController,
-            decoration: InputDecoration(
-              labelText: 'Password',
-              prefixIcon: const Icon(Icons.lock),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            obscureText: true,
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: isActionLoading ? null : _addCollector,
-              icon: isActionLoading
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                    )
-                  : const Icon(Icons.add),
-              label: Text(isActionLoading ? 'Adding...' : 'Add Collector'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF014EB2),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Add New Collector', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: usernameController,
+              decoration: InputDecoration(
+                hintText: 'Enter usercode',
+                prefixIcon: const Icon(Icons.person),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF014EB2))),
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 12),
+            TextField(
+              controller: emailController,
+              decoration: InputDecoration(
+                hintText: 'Enter email address',
+                prefixIcon: const Icon(Icons.email),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF014EB2))),
+              ),
+              keyboardType: TextInputType.emailAddress,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: passwordController,
+              decoration: InputDecoration(
+                hintText: 'Enter password',
+                prefixIcon: const Icon(Icons.lock),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF014EB2))),
+              ),
+              obscureText: true,
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: isActionLoading ? null : _addCollector,
+                icon: isActionLoading
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.add),
+                label: Text(isActionLoading ? 'Adding...' : 'Add Collector'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF014EB2),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -785,43 +910,42 @@ class _CollectorManagementMobileState extends State<CollectorManagementMobile> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2))],
+        boxShadow: const [BoxShadow(color: Colors.black12, offset: Offset(0, 2), blurRadius: 6, spreadRadius: 2)],
       ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Registered Collectors', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
-          const SizedBox(height: 16),
-          TextField(
-            controller: searchController,
-            decoration: InputDecoration(
-              hintText: 'Search collectors...',
-              prefixIcon: const Icon(Icons.search),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Registered Collectors', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: searchController,
+              decoration: InputDecoration(
+                hintText: 'Search collectors...',
+                prefixIcon: const Icon(Icons.search),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF014EB2))),
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Showing ${filteredCollectors.length} of ${allCollectors.length} collectors',
-            style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-          ),
-          const SizedBox(height: 16),
-          if (isCollectorsLoading)
-            const Padding(padding: EdgeInsets.all(32), child: Center(child: CircularProgressIndicator()))
-          else if (filteredCollectors.isEmpty)
-            _buildEmptyState()
-          else
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: filteredCollectors.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                return _mobileCollectorCard(filteredCollectors[index]);
-              },
-            ),
-        ],
+            const SizedBox(height: 12),
+            Text('Showing ${filteredCollectors.length} of ${allCollectors.length} collectors', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+            const SizedBox(height: 16),
+            if (isCollectorsLoading)
+              const Padding(padding: EdgeInsets.all(32), child: Center(child: CircularProgressIndicator()))
+            else if (filteredCollectors.isEmpty)
+              _buildEmptyState()
+            else
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: filteredCollectors.length,
+                separatorBuilder: (context, index) => const SizedBox(height: 12),
+                itemBuilder: (context, index) => _mobileCollectorCard(filteredCollectors[index]),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -833,30 +957,20 @@ class _CollectorManagementMobileState extends State<CollectorManagementMobile> {
         children: [
           Icon(allCollectors.isEmpty ? Icons.error_outline : Icons.search_off, size: 48, color: Colors.grey.shade400),
           const SizedBox(height: 12),
-          Text(
-            allCollectors.isEmpty ? 'No collectors available' : 'No collectors found',
-            style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
-          ),
+          Text(allCollectors.isEmpty ? 'No collectors available' : 'No collectors found', style: TextStyle(fontSize: 16, color: Colors.grey.shade600)),
           const SizedBox(height: 6),
           Text(
-            allCollectors.isEmpty ? 'Add your first collector using the form above' : 'Try adjusting your search criteria',
+            allCollectors.isEmpty ? 'Check your connection or try refreshing' : 'Try adjusting your search criteria',
             style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
             textAlign: TextAlign.center,
           ),
           if (allCollectors.isEmpty) ...[
             const SizedBox(height: 16),
             ElevatedButton.icon(
-              onPressed: () {
-                setState(() {
-                  showAddForm = true;
-                });
-              },
-              icon: const Icon(Icons.add),
-              label: const Text('Add Collector'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF014EB2),
-                foregroundColor: Colors.white,
-              ),
+              onPressed: _refreshDashboard,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF014EB2), foregroundColor: Colors.white),
             ),
           ],
         ],
@@ -867,8 +981,7 @@ class _CollectorManagementMobileState extends State<CollectorManagementMobile> {
   Widget _mobileCollectorCard(Map<String, dynamic> collector) {
     return Container(
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-          color: Colors.grey.shade50, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey.shade300)),
+      decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey.shade200)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -937,7 +1050,7 @@ class _CollectorManagementMobileState extends State<CollectorManagementMobile> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 80,
+            width: 100,
             child: Text(
               label,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 11, fontWeight: FontWeight.w500),

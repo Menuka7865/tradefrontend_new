@@ -13,7 +13,7 @@ class ServerServicesloging {
     final body = jsonEncode({
       "user_code": uname,
       "password": password,
-      "type": "login_admin",
+      "type": "login",
     });
 
     try {
