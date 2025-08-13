@@ -2,6 +2,8 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
+final String baseUrl = "https://app.chilawtradeassociation.com/tradeApi/index.php";
+
 class AdminBackendServices {
   /// 🔹 Helper method to get token
   static Future<String?> _getToken() async {
@@ -9,12 +11,18 @@ class AdminBackendServices {
     return prefs.getString("auth_token"); // ✅ Must match the key used when saving token
   }
 
+  static Future<int?> getUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt("id");
+  }
+
   /// 🔹 Fetch Shops
   static Future<Map<String, dynamic>> getShops() async {
     final token = await _getToken();
+    final id = await getUserId();
 
-    final url = Uri.parse("http://app.chilawtradeassociation.com/tradeApi/index.php");
-    final body = jsonEncode({"type": "list_shop","loged_user_id": "52"});
+    final url = Uri.parse(baseUrl);
+    final body = jsonEncode({"type": "list_shop","loged_user_id":  id?.toString() ?? ""});
 
     try {
       final response = await http.post(
@@ -43,9 +51,10 @@ class AdminBackendServices {
   /// 🔹 Fetch Admin Dashboard Stats
   static Future<Map<String, dynamic>> getDashboardStats() async {
     final token = await _getToken();
+    final id = await getUserId();
 
-    final url = Uri.parse("http://app.chilawtradeassociation.com/tradeApi/index.php");
-    final body = jsonEncode({"type": "get_dashboard_stats","loged_user_id":"52"});
+    final url = Uri.parse(baseUrl);
+    final body = jsonEncode({"type": "get_dashboard_stats","loged_user_id":id?.toString() ?? "",});
 
     try {
       final response = await http.post(
@@ -74,11 +83,12 @@ class AdminBackendServices {
   /// 🔹 Fetch Collectors
   static Future<Map<String, dynamic>> getCollectors() async {
     final token = await _getToken();
+    final id = await getUserId();
 
-    final url = Uri.parse("http://app.chilawtradeassociation.com/tradeApi/index.php");
+    final url = Uri.parse(baseUrl);
     final body = jsonEncode({
       "type": "list_collectors",
-      "loged_user_id": "52"
+      "loged_user_id": id?.toString() ?? "",
     });
 
     try {
@@ -112,11 +122,12 @@ class AdminBackendServices {
     required String password,
   }) async {
     final token = await _getToken();
+    final id = await getUserId();
 
-    final url = Uri.parse("http://app.chilawtradeassociation.com/tradeApi/index.php");
+    final url = Uri.parse(baseUrl);
     final body = jsonEncode({
       "type": "add_collector",
-      "loged_user_id": "52",
+      "loged_user_id": id?.toString() ?? "",
       "user_code": usercode,
       "email": email,
       "password": password,
@@ -149,11 +160,12 @@ class AdminBackendServices {
   /// 🔹 Fetch Collector Statistics
   static Future<Map<String, dynamic>> getCollectorStats() async {
     final token = await _getToken();
+    final id = await getUserId();
 
-    final url = Uri.parse("http://app.chilawtradeassociation.com/tradeApi/index.php");
+    final url = Uri.parse(baseUrl);
     final body = jsonEncode({
       "type": "get_collector_stats",
-      "loged_user_id": "52"
+      "loged_user_id": id?.toString() ?? "",
     });
 
     try {
@@ -186,11 +198,12 @@ static Future<Map<String, dynamic>> deleteCollector({
   required String collectorId,
 }) async {
   final token = await _getToken();
+  final id = await getUserId();
 
-  final url = Uri.parse("http://app.chilawtradeassociation.com/tradeApi/index.php");
+  final url = Uri.parse(baseUrl);
   final body = jsonEncode({
     "type": "delete_collector",
-    "loged_user_id": "52",
+    "loged_user_id": id?.toString() ?? "",
     "user_id": collectorId,  
   });
 
@@ -226,13 +239,14 @@ static Future<Map<String, dynamic>> updateCollector({
   String? password,
 }) async {
   final token = await _getToken();
+  final id = await getUserId();
 
-  final url = Uri.parse("http://app.chilawtradeassociation.com/tradeApi/index.php");
+  final url = Uri.parse(baseUrl);
   
   // Build the request body with correct parameter names
   Map<String, dynamic> requestBody = {
     "type": "update_collector",
-    "loged_user_id": "52",
+    "loged_user_id": id?.toString() ?? "",
     "user_id": collectorId,        
     "user_name": usercode,         
     "email": email,
@@ -275,13 +289,14 @@ static Future<Map<String, dynamic>> updatePayment({
   
 }) async {
   final token = await _getToken();
+  final id = await getUserId();
 
-  final url = Uri.parse("http://app.chilawtradeassociation.com/tradeApi/index.php");
+  final url = Uri.parse(baseUrl);
   
   // Build the request body with correct parameter names
   Map<String, dynamic> requestBody = {
     "type": "update_monthly_payment",
-    "loged_user_id": "52",
+    "loged_user_id": id?.toString() ?? "",
     "new_amount": newAmount,
   };
 
@@ -316,11 +331,12 @@ static Future<Map<String, dynamic>> updatePayment({
 //Get Monthly Payment
 static Future<Map<String, dynamic>> getmonthlypayment() async {
     final token = await _getToken();
+    final id = await getUserId();
 
-    final url = Uri.parse("http://app.chilawtradeassociation.com/tradeApi/index.php");
+    final url = Uri.parse(baseUrl);
     final body = jsonEncode({
       "type": "show_monthly_payment",
-      "loged_user_id": "52"
+      "loged_user_id": id?.toString() ?? ""
     });
 
     try {
@@ -350,9 +366,10 @@ static Future<Map<String, dynamic>> getmonthlypayment() async {
   //get users
   static Future<Map<String, dynamic>> getUsers() async {
     final token = await _getToken();
+    final id = await getUserId();
 
-    final url = Uri.parse("http://app.chilawtradeassociation.com/tradeApi/index.php");
-    final body = jsonEncode({"type": "list_users","loged_user_id": "52"});
+    final url = Uri.parse(baseUrl);
+    final body = jsonEncode({"type": "list_users","loged_user_id": id?.toString() ?? ""});
 
     try {
       final response = await http.post(
@@ -384,11 +401,12 @@ static Future<Map<String, dynamic>> getmonthlypayment() async {
     required String message,
   }) async {
     final token = await _getToken();
+    final id = await getUserId();
 
-    final url = Uri.parse("http://app.chilawtradeassociation.com/tradeApi/index.php");
+    final url = Uri.parse(baseUrl);
     final body = jsonEncode({
       "type": "send_to_single_trader",
-      "loged_user_id": "52",
+      "loged_user_id": id?.toString() ?? "",
       "trader_id": userId,
       "message": message,
     });
@@ -422,11 +440,12 @@ static Future<Map<String, dynamic>> getmonthlypayment() async {
     required String message,
   }) async {
     final token = await _getToken();
+    final id = await getUserId();
 
-    final url = Uri.parse("http://app.chilawtradeassociation.com/tradeApi/index.php");
+    final url = Uri.parse(baseUrl);
     final body = jsonEncode({
       "type": "send_to_all_traders",
-      "loged_user_id": "52",
+      "loged_user_id": id?.toString() ?? "",
       "message": message,
     });
 

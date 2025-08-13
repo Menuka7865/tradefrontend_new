@@ -111,151 +111,136 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
   }
 
   void _showQRDialog(Map<String, dynamic> shop) {
-    String qrData = _generateQRData(shop);
-    String shopName = shop['shop_name']?.toString() ?? shop['name']?.toString() ?? 'Unknown Shop';
+  String qrData = _generateQRData(shop);
+  String shopName = shop['shop_name']?.toString() ?? shop['name']?.toString() ?? 'Unknown Shop';
 
-    _currentQrShop = shop; // Save for saving image on button press
+  _currentQrShop = shop; // Save for saving image on button press
 
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: Container(
-            width: 400,
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'QR Code for $shopName',
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 20),
-                RepaintBoundary(
-                  key: qrKey,
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey.shade300),
-                    ),
-                    child: QrImageView(
-                      data: qrData,
-                      version: QrVersions.auto,
-                      size: 200.0,
-                      backgroundColor: Colors.white,
-                      foregroundColor: Colors.black,
-                    ),
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Container(
+          width: 400,
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'QR Code for $shopName',
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              RepaintBoundary(
+                key: qrKey,
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      QrImageView(
+                        data: qrData,
+                        version: QrVersions.auto,
+                        size: 200.0,
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.black,
+                      ),
+                      const SizedBox(height: 12),
+                      // Show shop name below the QR code here
+                      Text(
+                        shopName,
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 16),
-                Text(
-                  'Scan this QR code to verify shop details',
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Close'),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Scan this QR code to verify shop details',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Close'),
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: () async {
+                      await _saveQrCode();
+                      Navigator.of(context).pop();
+                    },
+                    icon: const Icon(Icons.download),
+                    label: const Text('Save'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF014EB2),
+                      foregroundColor: Colors.white,
                     ),
-                    ElevatedButton.icon(
-                      onPressed: () async {
-                        await _saveQrCode();
-                        Navigator.of(context).pop();
-                      },
-                      icon: const Icon(Icons.download),
-                      label: const Text('Save'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF014EB2),
-                        foregroundColor: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+                  ),
+                ],
+              ),
+            ],
           ),
-        );
-      },
-    );
-  }
+        ),
+      );
+    },
+  );
+}
+
 
   // Adapted _saveQrCode for mobile and web
   Future<void> _saveQrCode() async {
     if (kIsWeb) {
       await _saveQrCodeWeb();
-    } else {
-      await _saveQrCodeMobile();
-    }
+    } 
   }
 
   // Web download method
   Future<void> _saveQrCodeWeb() async {
-    try {
-      RenderRepaintBoundary boundary = qrKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
-      ui.Image image = await boundary.toImage(pixelRatio: 3);
-      ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      Uint8List pngBytes = byteData!.buffer.asUint8List();
+  try {
+    // Get shop name safely from currently saved shop map
+    String shopName = _currentQrShop?['shop_name']?.toString() ??
+                      _currentQrShop?['name']?.toString() ??
+                      'unknown_shop';
 
-      final blob = html.Blob([pngBytes], 'image/png');
-      final url = html.Url.createObjectUrlFromBlob(blob);
-      final anchor = html.AnchorElement()
-        ..href = url
-        ..download = 'qr_code_${DateTime.now().millisecondsSinceEpoch}.png'
-        ..style.display = 'none';
+    RenderRepaintBoundary boundary = qrKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+    ui.Image image = await boundary.toImage(pixelRatio: 3);
+    ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+    Uint8List pngBytes = byteData!.buffer.asUint8List();
 
-      html.document.body!.append(anchor);
-      anchor.click();
-      anchor.remove();
-      html.Url.revokeObjectUrl(url);
+    final blob = html.Blob([pngBytes], 'image/png');
+    final url = html.Url.createObjectUrlFromBlob(blob);
+    final anchor = html.AnchorElement()
+      ..href = url
+      ..download = 'qr_code_${shopName}.png'  // Here is your filename with shop name
+      ..style.display = 'none';
 
-      _showSuccessSnackBar('QR code downloaded!');
-    } catch (e) {
-      print('Error saving QR code on web: $e');
-      _showErrorSnackBar('Error saving QR code: $e');
-    }
+    html.document.body!.append(anchor);
+    anchor.click();
+    anchor.remove();
+    html.Url.revokeObjectUrl(url);
+
+    _showSuccessSnackBar('QR code downloaded!');
+  } catch (e) {
+    print('Error saving QR code on web: $e');
+    _showErrorSnackBar('Error saving QR code: $e');
   }
+}
 
-  // Mobile save to gallery method
-  Future<void> _saveQrCodeMobile() async {
-    try {
-      if (await Permission.storage.isDenied) {
-        final status = await Permission.storage.request();
-        if (!status.isGranted) {
-          _showErrorSnackBar('Storage permission denied. Cannot save QR Code.');
-          return;
-        }
-      }
 
-      RenderRepaintBoundary boundary = qrKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
-      ui.Image image = await boundary.toImage(pixelRatio: 3);
-      ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      Uint8List pngBytes = byteData!.buffer.asUint8List();
-
-      final result = await ImageGallerySaverPlus.saveImage(
-        pngBytes,
-        quality: 100,
-        name: 'qr_code_${DateTime.now().millisecondsSinceEpoch}',
-      );
-
-      if (result == null || result.isEmpty) {
-        _showErrorSnackBar('Failed to save QR code.');
-      } else {
-        _showSuccessSnackBar('QR code saved to gallery!');
-      }
-    } catch (e) {
-      print('Error saving QR code: $e');
-      _showErrorSnackBar('Error saving QR code: $e');
-    }
-  }
-
+  
   Future<void> _initializeDashboard() async {
     await Future.wait([
       _loadDashboardStats(),
@@ -447,29 +432,37 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
   }
 
   // Show Send Message Dialog with "All" option
-  void _showSendMessageDialog() {
-    String? selectedUserId;
-    TextEditingController messageController = TextEditingController();
+ void _showSendMessageDialog() {
+  String? selectedUserId = 'all'; // Default to 'all' so something's selected initially
+  TextEditingController messageController = TextEditingController();
 
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Send Message'),
-          content: Column(
+  showDialog(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: const Text('Send Message'),
+        content: SizedBox(
+          width: 350,
+          height: 350, // Set desired width
+          child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               DropdownButtonFormField<String>(
                 decoration: const InputDecoration(labelText: 'Select User'),
+                value: selectedUserId,
                 items: [
                   const DropdownMenuItem<String>(
                     value: 'all',
                     child: Text('All'),
                   ),
-                  ...allUsers.map((user) {
+                  ...allUsers
+                      .where((user) => user['user_type'] == 'trader')
+                      .map((user) {
                     return DropdownMenuItem<String>(
                       value: user['id'].toString(),
-                      child: Text(user['name'] ?? user['user_name'] ?? 'Unnamed User'),
+                      child: Text(
+                        user['name'] ?? user['user_name'] ?? 'Unnamed User',
+                      ),
                     );
                   }).toList(),
                 ],
@@ -477,6 +470,7 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
                   selectedUserId = value;
                 },
               ),
+              const SizedBox(height: 16),
               TextField(
                 controller: messageController,
                 maxLines: 3,
@@ -487,52 +481,52 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
               ),
             ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                if (selectedUserId == null || messageController.text.trim().isEmpty) {
-                  _showErrorSnackBar('Please select a user and enter a message');
-                  return;
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (selectedUserId == null || messageController.text.trim().isEmpty) {
+                _showErrorSnackBar('Please select a user and enter a message');
+                return;
+              }
+
+              try {
+                Map<String, dynamic> response;
+                if (selectedUserId == 'all') {
+                  response = await AdminBackendServices.sendMessageToAll(
+                    message: messageController.text.trim(),
+                  );
+                } else {
+                  response = await AdminBackendServices.sendMessage(
+                    userId: selectedUserId!,
+                    message: messageController.text.trim(),
+                  );
                 }
 
-                try {
-                  Map<String, dynamic> response;
-                  if (selectedUserId == 'all') {
-                    // Send message to all users
-                    response = await AdminBackendServices.sendMessageToAll(
-                      message: messageController.text.trim(),
-                    );
-                  } else {
-                    // Send message to single user
-                    response = await AdminBackendServices.sendMessage(
-                      userId: selectedUserId!,
-                      message: messageController.text.trim(),
-                    );
-                  }
-
-                  if (response['status'] == true) {
-                    _showSuccessSnackBar("Message sent successfully");
-                    Navigator.of(context).pop();
-                  } else {
-                    _showErrorSnackBar(response['Message'] ?? 'Failed to send message');
-                  }
-                } catch (e) {
-                  _showErrorSnackBar('Error sending message: $e');
+                if (response['status'] == true) {
+                  _showSuccessSnackBar("Message sent successfully");
+                  Navigator.of(context).pop();
+                } else {
+                  _showErrorSnackBar(response['Message'] ?? 'Failed to send message');
                 }
-              },
-              child: const Text('Send'),
-            ),
-          ],
-        );
-      },
-    );
-  }
+              } catch (e) {
+                _showErrorSnackBar('Error sending message: $e');
+              }
+            },
+            child: const Text('Send'),
+          ),
+        ],
+      );
+    },
+  );
+}
+
 
   @override
   Widget build(BuildContext context) {

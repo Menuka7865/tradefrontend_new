@@ -290,15 +290,19 @@ class _LoginState extends State<Login> {
             _showSuccess('Login successful!');
 
             // Check user type and redirect accordingly
-            String userType = responseObj['user_type'] ?? 'user';
+           
 
-            if (userType.toLowerCase() == 'admin') {
-              // Redirect to admin dashboard
-              Navigator.pushReplacementNamed(context, '/AdminDashboard');
-            } else {
-              // Redirect to user dashboard
-              Navigator.pushReplacementNamed(context, '/HomePhone');
-            }
+           if (mounted) {
+            
+              // Check if admin route exists, fallback to user route if not
+              try {
+                Navigator.pushReplacementNamed(context, '/AdminDashboard');
+              } catch (e) {
+                print("Admin route not found, redirecting to user dashboard: $e");
+                Navigator.pushReplacementNamed(context, '/HomeWeb');
+              }
+           
+          }
           } else {
             String errorMessage = responseObj['Message'] ?? responseObj['message'] ?? 'Login failed';
             _showError('Login failed: $errorMessage');

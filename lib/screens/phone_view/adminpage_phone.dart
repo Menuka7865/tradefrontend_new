@@ -1,13 +1,13 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
+import 'dart:html' as html; // For web download
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart';
 
 import 'package:chilawtraders/serverconection/admin_backend_services.dart';
 
@@ -55,6 +55,9 @@ class _AdminDashboardMobileState extends State<AdminDashboardMobile> {
 
   // GlobalKey for capturing QR code widget image
   final GlobalKey qrKey = GlobalKey();
+
+  // Store current shop for QR saving
+  Map<String, dynamic>? _currentQrShop;
 
   @override
   void initState() {
@@ -128,6 +131,8 @@ class _AdminDashboardMobileState extends State<AdminDashboardMobile> {
     String qrData = _generateQRData(shop);
     String shopName = shop['shop_name']?.toString() ?? shop['name']?.toString() ?? 'Unknown Shop';
 
+    _currentQrShop = shop; // Save for saving image on button press
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -139,22 +144,14 @@ class _AdminDashboardMobileState extends State<AdminDashboardMobile> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
-                  'QR Code',
-                  style: TextStyle(
+                Text(
+                  'QR Code for $shopName',
+                  style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: Colors.black87,
                   ),
                   textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  shopName,
-                  style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 16),
                 RepaintBoundary(
@@ -166,12 +163,24 @@ class _AdminDashboardMobileState extends State<AdminDashboardMobile> {
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: Colors.grey.shade300),
                     ),
-                    child: QrImageView(
-                      data: qrData,
-                      version: QrVersions.auto,
-                      size: 180.0,
-                      backgroundColor: Colors.white,
-                      foregroundColor: Colors.black,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        QrImageView(
+                          data: qrData,
+                          version: QrVersions.auto,
+                          size: 180.0,
+                          backgroundColor: Colors.white,
+                          foregroundColor: Colors.black,
+                        ),
+                        const SizedBox(height: 12),
+                        // Show shop name below the QR code
+                        Text(
+                          shopName,
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -211,36 +220,39 @@ class _AdminDashboardMobileState extends State<AdminDashboardMobile> {
     );
   }
 
-  /// Save QR code image to gallery with permission handling (mobile)
+  /// Save QR code image - adapted for web
   Future<void> _saveQrCode() async {
+    await _saveQrCodeWeb();
+  }
+
+  /// Web download method for mobile interface
+  Future<void> _saveQrCodeWeb() async {
     try {
-      // Request storage permission (Android)
-      if (await Permission.storage.isDenied) {
-        final status = await Permission.storage.request();
-        if (!status.isGranted) {
-          _showErrorSnackBar('Storage permission denied. Cannot save QR Code.');
-          return;
-        }
-      }
+      // Get shop name safely from currently saved shop map
+      String shopName = _currentQrShop?['shop_name']?.toString() ??
+                        _currentQrShop?['name']?.toString() ??
+                        'unknown_shop';
 
       RenderRepaintBoundary boundary = qrKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
       ui.Image image = await boundary.toImage(pixelRatio: 3);
       ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       Uint8List pngBytes = byteData!.buffer.asUint8List();
 
-      final result = await ImageGallerySaverPlus.saveImage(
-        pngBytes,
-        quality: 100,
-        name: 'qr_code_${DateTime.now().millisecondsSinceEpoch}',
-      );
+      final blob = html.Blob([pngBytes], 'image/png');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      final anchor = html.AnchorElement()
+        ..href = url
+        ..download = 'qr_code_${shopName}.png'  // Filename with shop name
+        ..style.display = 'none';
 
-      if (result == null || result.isEmpty) {
-        _showErrorSnackBar('Failed to save QR code.');
-      } else {
-        _showSuccessSnackBar('QR code saved to gallery!');
-      }
+      html.document.body!.append(anchor);
+      anchor.click();
+      anchor.remove();
+      html.Url.revokeObjectUrl(url);
+
+      _showSuccessSnackBar('QR code downloaded!');
     } catch (e) {
-      print('Error saving QR code: $e');
+      print('Error saving QR code on web: $e');
       _showErrorSnackBar('Error saving QR code: $e');
     }
   }
@@ -483,7 +495,9 @@ class _AdminDashboardMobileState extends State<AdminDashboardMobile> {
                       value: 'all',
                       child: Text('All'),
                     ),
-                    ...allUsers.map((user) {
+                    ...allUsers
+                    .where((user) => user['user_type'] == 'trader') 
+                    .map((user) {
                       return DropdownMenuItem<String>(
                         value: user['id'].toString(),
                         child: Text(user['name'] ?? user['user_name'] ?? 'Unnamed User'),
