@@ -8,7 +8,7 @@ class ServerServicesloging {
     required String uname,
     required String password,
   }) async {
-    final url = Uri.parse("http://app.chilawtradeassociation.com/tradeApi/index.php");
+    final url = Uri.parse("https://app.chilawtradeassociation.com/tradeApi/index.php");
 
     final body = jsonEncode({
       "user_code": uname,
