@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:chilawtraders/serverconection/admin_backend_services.dart';
@@ -624,6 +626,7 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
                     const SizedBox(height: 30),
                     navItem(Icons.dashboard, "Dashboard", false),
                     navItem(Icons.people, "Collectors", true),
+                    navItem(Icons.payment, "Payments", false),
                   ],
                 ),
                 Padding(
@@ -1103,6 +1106,10 @@ class _CollectorManagementWebState extends State<CollectorManagementWeb> {
             Navigator.pushNamed(context, '/AdminDashboardWeb');
           } else if (title == "Collectors") {
             Navigator.pushNamed(context, '/CollectorManagement');
+          }else if (title == "Payments") {
+            Navigator.pushNamed(context, '/PaymentManagementWeb');
+          } else {
+            // Handle other navigation cases if needed
           }
         },
       ),

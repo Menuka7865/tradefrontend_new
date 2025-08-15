@@ -472,7 +472,45 @@ static Future<Map<String, dynamic>> getmonthlypayment() async {
       return {"status": false, "Message": "Connection error: $e"};
     }
   }
+static Future<Map<String, dynamic>> getPayments({
+  DateTime? startDate,
+  DateTime? endDate,
+}) async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString("auth_token");
+    
+    Map<String, dynamic> queryParams = {};
+    if (startDate != null) {
+     queryParams['start_date'] = startDate.toIso8601String();
+   }
+   if (endDate != null) {
+     queryParams['end_date'] = endDate.toIso8601String();
+   }
 
+   final response = await http.get(
+     Uri.parse('$baseUrl/admin/payments').replace(queryParameters: queryParams),
+     headers: {
+       'Content-Type': 'application/json',
+       'Authorization': 'Bearer $token',
+     },
+   );
+
+   if (response.statusCode == 200) {
+     return json.decode(response.body);
+   } else {
+     return {
+       'status': false,
+       'Message': 'Failed to load payments: ${response.statusCode}',
+     };
+   }
+ } catch (e) {
+   return {
+     'status': false,
+     'Message': 'Error loading payments: $e',
+   };
+ }
+}
 
 
 }

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'dart:html' as html; // For web download
@@ -683,8 +684,9 @@ class _AdminDashboardMobileState extends State<AdminDashboardMobile> {
             Expanded(
               child: Column(
                 children: [
-                  _drawerItem(Icons.dashboard, "Dashboard", 0),
-                  _drawerItem(Icons.people, "Collectors", 1),
+                  _drawerItem(Icons.dashboard, "Dashboard", 1),
+                  _drawerItem(Icons.people, "Collectors", 0),
+                  _drawerItem(Icons.payment, "Payments", 0),
                 ],
               ),
             ),
@@ -725,6 +727,8 @@ class _AdminDashboardMobileState extends State<AdminDashboardMobile> {
             Navigator.pushReplacementNamed(context, '/AdminDashboardMobile');
           } else if (title == "Collectors") {
             Navigator.pushReplacementNamed(context, '/CollectorManagementMobile');
+          }else if (title == "Payments") {
+            Navigator.pushReplacementNamed(context, '/PaymentManagementMobile');
           }
         },
       ),

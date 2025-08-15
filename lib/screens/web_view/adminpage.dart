@@ -581,6 +581,7 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
                     const SizedBox(height: 30),
                     navItem(Icons.dashboard, "Dashboard", true),
                     navItem(Icons.people, "Collectors", false),
+                    navItem(Icons.payment, "Payments", false),
                   ],
                 ),
                 Padding(
@@ -933,6 +934,8 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
             print('Already on Dashboard');
           } else if (title == "Collectors") {
             Navigator.pushNamed(context, '/CollectorManagement');
+          }else if (title == "Payments") {
+            Navigator.pushNamed(context, '/PaymentManagementWeb');
           }
         },
       ),
