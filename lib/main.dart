@@ -50,9 +50,9 @@ class MyApp extends StatelessWidget {
         '/CollectorManagementMobile': (context) => const CollectorManagementMobile(), // Mobile version
 
         //payment routes
-        "/PaymentManagement": (context) => const ResponsivePayments(), // Responsive payments
+        '/PaymentManagement': (context) => const ResponsivePayments(), // Responsive payments
         '/PaymentManagementWeb': (context) => const PaymentManagementWeb(), // Web version for
-        '/PaymentManagementMobile': (context) => const PaymentManagementResponsive(), // Mobile version for payments
+        '/PaymentManagementMobile': (context) => const PaymentManagementMobile(), // Mobile version for payments
       },
     );
   }

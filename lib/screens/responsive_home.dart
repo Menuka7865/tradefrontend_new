@@ -10,7 +10,7 @@ class ResponsiveHome extends StatelessWidget {
   /// Determine device type based on screen width
   DeviceType _getDeviceType(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    if (width >= 1200) return DeviceType.desktop;
+    if (width >= 1000) return DeviceType.desktop;
     if (width >= 600) return DeviceType.tablet;
     return DeviceType.mobile;
   }

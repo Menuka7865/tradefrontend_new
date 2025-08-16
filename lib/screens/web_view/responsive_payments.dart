@@ -18,29 +18,34 @@ class ResponsivePayments extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final deviceType = _getDeviceType(context);
-    final screenWidth = MediaQuery.of(context).size.width;
-    
-    // Debug information (can be removed in production)
-    print('Screen width: $screenWidth');
-    print('Device type: $deviceType');
-    print('Is web platform: $kIsWeb');
+    // Use MediaQuery to get the current screen size
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final screenWidth = constraints.maxWidth;
+        final deviceType = _getDeviceType(context);
+        
+        // Debug information (remove in production)
+        debugPrint('Screen width: $screenWidth');
+        debugPrint('Device type: $deviceType');
+        debugPrint('Is web platform: $kIsWeb');
 
-    // FIXED DECISION LOGIC:
-    // Use screen width as primary factor, not platform
-    // Desktop/Large screens (width >= 1200) -> Web view
-    // Mobile/Tablet (width < 1200) -> Mobile view
-    if (screenWidth >= 1200) {
-      return const PaymentManagementWeb();
-    } else {
-      return const PaymentManagementResponsive();
-    }
+        // FIXED DECISION LOGIC:
+        // Use screen width as primary factor with better breakpoints
+        if (screenWidth >= 1200) {
+          // Desktop layout - use web view
+          return const PaymentManagementWeb();
+        } else {
+          // Mobile/Tablet layout - use mobile responsive view
+          return const PaymentManagementMobile();
+        }
+      },
+    );
   }
 }
 
-/// Alternative responsive widget with LayoutBuilder for better responsive behavior
-class AdaptiveCollectorScreen extends StatelessWidget {
-  const AdaptiveCollectorScreen({super.key});
+/// Alternative responsive widget with better responsive behavior
+class AdaptivePaymentScreen extends StatelessWidget {
+  const AdaptivePaymentScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -51,11 +56,11 @@ class AdaptiveCollectorScreen extends StatelessWidget {
           // Desktop layout
           return const PaymentManagementWeb();
         } else if (constraints.maxWidth >= 600) {
-          // Tablet layout - using mobile view for tablets
-          return const PaymentManagementResponsive();
+          // Tablet layout - using mobile responsive view
+          return const PaymentManagementMobile();
         } else {
           // Mobile layout
-          return const PaymentManagementResponsive();
+          return const PaymentManagementMobile();
         }
       },
     );
@@ -94,7 +99,7 @@ class ResponsiveWrapper extends StatelessWidget {
 /// Utility class for responsive breakpoints
 class ResponsiveBreakpoints {
   static const double mobile = 600;
-  static const double tablet = 1200;
+  static const double desktop = 1200;
   
   static bool isMobile(BuildContext context) {
     return MediaQuery.of(context).size.width < mobile;
@@ -102,16 +107,16 @@ class ResponsiveBreakpoints {
   
   static bool isTablet(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    return width >= mobile && width < tablet;
+    return width >= mobile && width < desktop;
   }
   
   static bool isDesktop(BuildContext context) {
-    return MediaQuery.of(context).size.width >= tablet;
+    return MediaQuery.of(context).size.width >= desktop;
   }
   
   static DeviceType getDeviceType(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    if (width >= tablet) return DeviceType.desktop;
+    if (width >= desktop) return DeviceType.desktop;
     if (width >= mobile) return DeviceType.tablet;
     return DeviceType.mobile;
   }

@@ -13,14 +13,14 @@ DeviceType _getDeviceType(BuildContext context) {
   return DeviceType.mobile;
 }
 
-class PaymentManagementResponsive extends StatefulWidget {
-  const PaymentManagementResponsive({super.key});
+class PaymentManagementMobile extends StatefulWidget {
+  const PaymentManagementMobile({super.key});
 
   @override
-  State<PaymentManagementResponsive> createState() => _PaymentManagementResponsiveState();
+  State<PaymentManagementMobile> createState() => _PaymentManagementResponsiveState();
 }
 
-class _PaymentManagementResponsiveState extends State<PaymentManagementResponsive> {
+class _PaymentManagementResponsiveState extends State<PaymentManagementMobile> {
   // Payment data
   List<dynamic> allPayments = [];
   List<dynamic> filteredPayments = [];
@@ -592,11 +592,11 @@ class _PaymentManagementResponsiveState extends State<PaymentManagementResponsiv
           });
           Navigator.pop(context);
           if (title == "Dashboard") {
-            Navigator.pushReplacementNamed(context, '/AdminDashboardMobile');
+            Navigator.pushReplacementNamed(context, '/AdminDashboard');
           } else if (title == "Collectors") {
-            Navigator.pushReplacementNamed(context, '/CollectorManagementMobile');
+            Navigator.pushReplacementNamed(context, '/CollectorManagement');
           } else if (title == "Payments") {
-            Navigator.pushReplacementNamed(context, '/PaymentManagementMobile');
+            Navigator.pushReplacementNamed(context, '/PaymentManagement');
           }
         },
       ),
@@ -796,7 +796,7 @@ class _PaymentManagementResponsiveState extends State<PaymentManagementResponsiv
       paymentDate = null;
     }
 
-    final statusColor = _getPaymentStatusColor(payment['status']);
+    // final statusColor = _getPaymentStatusColor(payment['status']);
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -836,21 +836,21 @@ class _PaymentManagementResponsiveState extends State<PaymentManagementResponsiv
                   ],
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  (payment['status']?.toString() ?? 'Completed').toUpperCase(),
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: statusColor,
-                  ),
-                ),
-              ),
+              // Container(
+              //   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              //   decoration: BoxDecoration(
+              //     color: statusColor.withOpacity(0.1),
+              //     borderRadius: BorderRadius.circular(12),
+              //   ),
+              //   child: Text(
+              //     (payment['status']?.toString() ?? 'Completed').toUpperCase(),
+              //     style: TextStyle(
+              //       fontSize: 10,
+              //       fontWeight: FontWeight.bold,
+              //       color: statusColor,
+              //     ),
+              //   ),
+              // ),
             ],
           ),
           const SizedBox(height: 8),

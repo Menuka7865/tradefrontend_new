@@ -410,26 +410,8 @@ class _PaymentManagementWebState extends State<PaymentManagementWeb> {
     }
   }
 
-  Color _getPaymentStatusColor(String? status) {
-    switch (status?.toLowerCase()) {
-      case 'completed':
-      case 'success':
-        return Colors.green;
-      case 'pending':
-        return Colors.orange;
-      case 'failed':
-      case 'cancelled':
-        return Colors.red;
-      default:
-        return Colors.grey;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    // The full build method remains unchanged except date filter _applyDateFilter calls.
-    // Paste your existing build method here unchanged.
-    // [Paste your full build method exactly as before]
     return Scaffold(
       body: Row(
         children: [
@@ -576,7 +558,7 @@ class _PaymentManagementWebState extends State<PaymentManagementWeb> {
                       child: Padding(
                         padding: const EdgeInsets.all(20.0),
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             // Header with filters
                             Row(
@@ -714,165 +696,120 @@ class _PaymentManagementWebState extends State<PaymentManagementWeb> {
                                               border: Border.all(color: Colors.grey.shade300),
                                               borderRadius: BorderRadius.circular(8),
                                             ),
-                                            child: DataTable(
-                                              headingRowColor: MaterialStateProperty.all(Colors.grey.shade100),
-                                              columns: const [
-                                                DataColumn(
-                                                  label: Text(
-                                                    'Payment ID',
-                                                    style: TextStyle(fontWeight: FontWeight.bold),
-                                                  ),
-                                                ),
-                                                DataColumn(
-                                                  label: Text(
-                                                    'Amount',
-                                                    style: TextStyle(fontWeight: FontWeight.bold),
-                                                  ),
-                                                ),
-                                                DataColumn(
-                                                  label: Text(
-                                                    'Shop Details',
-                                                    style: TextStyle(fontWeight: FontWeight.bold),
-                                                  ),
-                                                ),
-                                                DataColumn(
-                                                  label: Text(
-                                                    'Collector Details',
-                                                    style: TextStyle(fontWeight: FontWeight.bold),
-                                                  ),
-                                                ),
-                                                DataColumn(
-                                                  label: Text(
-                                                    'Date & Time',
-                                                    style: TextStyle(fontWeight: FontWeight.bold),
-                                                  ),
-                                                ),
-                                                DataColumn(
-                                                  label: Text(
-                                                    'Status',
-                                                    style: TextStyle(fontWeight: FontWeight.bold),
-                                                  ),
-                                                ),
-                                              ],
-                                              rows: filteredPayments.map((payment) {
-                                                return DataRow(
-                                                  cells: [
-                                                    DataCell(
-                                                      Text(
-                                                        payment['payment_id']?.toString() ??
-                                                            payment['id']?.toString() ??
-                                                            'N/A',
-                                                        style: const TextStyle(fontFamily: 'monospace'),
-                                                      ),
+                                              child: DataTable(
+                                                headingRowColor: MaterialStateProperty.all(Colors.grey.shade100),
+                                                columns: const [
+                                                  DataColumn(
+                                                    label: Text(
+                                                      'Payment ID',
+                                                      style: TextStyle(fontWeight: FontWeight.bold),
                                                     ),
-                                                    DataCell(
-                                                      Text(
-                                                        _formatCurrency(payment['payment_amount']),
-                                                        style: const TextStyle(
-                                                          fontWeight: FontWeight.w600,
-                                                          color: Colors.green,
+                                                  ),
+                                                  DataColumn(
+                                                    label: Text(
+                                                      'Amount',
+                                                      style: TextStyle(fontWeight: FontWeight.bold),
+                                                    ),
+                                                  ),
+                                                  DataColumn(
+                                                    label: Text(
+                                                      'Shop Details',
+                                                      style: TextStyle(fontWeight: FontWeight.bold),
+                                                    ),
+                                                  ),
+                                                  DataColumn(
+                                                    label: Text(
+                                                      'Collector Details',
+                                                      style: TextStyle(fontWeight: FontWeight.bold),
+                                                    ),
+                                                  ),
+                                                  DataColumn(
+                                                    label: Text(
+                                                      'Date & Time',
+                                                      style: TextStyle(fontWeight: FontWeight.bold),
+                                                    ),
+                                                  ),
+                                                ],
+                                                rows: filteredPayments.map((payment) {
+                                                  return DataRow(
+                                                    cells: [
+                                                      DataCell(
+                                                        Text(
+                                                          payment['payment_id']?.toString() ??
+                                                              payment['id']?.toString() ??
+                                                              'N/A',
+                                                          style: const TextStyle(fontFamily: 'monospace'),
                                                         ),
                                                       ),
-                                                    ),
-                                                    DataCell(
-                                                      Column(
-                                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                                        mainAxisAlignment: MainAxisAlignment.center,
-                                                        children: [
-                                                          // Text(
-                                                          //   payment['shop_id']?.toString() ?? 'Unknown Shop',
-                                                          //   style: const TextStyle(fontWeight: FontWeight.w500),
-                                                          // ),
-                                                          const SizedBox(height: 2),
-                                                          Text(
-                                                            'ID: ${payment['shop_id']?.toString() ?? 'N/A'}',
-                                                            style: TextStyle(
-                                                              fontSize: 12,
-                                                              color: Colors.grey.shade600,
-                                                            ),
-                                                          ),
-                                                          const SizedBox(height: 2),
-                                                          // Text(
-                                                          //   'BR: ${payment['shop_br_number']?.toString() ?? payment['br_number']?.toString() ?? 'N/A'}',
-                                                          //   style: TextStyle(
-                                                          //     fontSize: 11,
-                                                          //     color: Colors.grey.shade500,
-                                                          //   ),
-                                                          // ),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                    DataCell(
-                                                      Column(
-                                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                                        mainAxisAlignment: MainAxisAlignment.center,
-                                                        children: [
-                                                          // Text(
-                                                          //   payment['collector_name']?.toString() ?? 'Unknown Collector',
-                                                          //   style: const TextStyle(fontWeight: FontWeight.w500),
-                                                          // ),
-                                                          const SizedBox(height: 2),
-                                                          Text(
-                                                            'ID: ${payment['user_id']?.toString() ?? 'N/A'}',
-                                                            style: TextStyle(
-                                                              fontSize: 12,
-                                                              color: Colors.grey.shade600,
-                                                            ),
-                                                          ),
-                                                          const SizedBox(height: 2),
-                                                          // Text(
-                                                          //   'Phone: ${payment['collector_phone']?.toString() ?? 'N/A'}',
-                                                          //   style: TextStyle(
-                                                          //     fontSize: 11,
-                                                          //     color: Colors.grey.shade500,
-                                                          //   ),
-                                                          // ),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                    DataCell(
-                                                      Column(
-                                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                                        mainAxisAlignment: MainAxisAlignment.center,
-                                                        children: [
-                                                          Text(
-                                                            _formatPaymentDate(payment['payment_date'] ?? payment['created_at']),
-                                                            style: const TextStyle(fontWeight: FontWeight.w500),
-                                                          ),
-                                                          const SizedBox(height: 2),
-                                                          Text(
-                                                            _formatPaymentTime(payment['payment_date'] ?? payment['created_at']),
-                                                            style: TextStyle(
-                                                              fontSize: 12,
-                                                              color: Colors.grey.shade600,
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                    DataCell(
-                                                      Container(
-                                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                                        decoration: BoxDecoration(
-                                                          color: _getPaymentStatusColor(payment['status']).withOpacity(0.1),
-                                                          borderRadius: BorderRadius.circular(12),
-                                                        ),
-                                                        child: Text(
-                                                          (payment['status']?.toString() ?? 'Completed').toUpperCase(),
-                                                          style: TextStyle(
-                                                            fontSize: 11,
+                                                      DataCell(
+                                                        Text(
+                                                          _formatCurrency(payment['payment_amount']),
+                                                          style: const TextStyle(
                                                             fontWeight: FontWeight.w600,
-                                                            color: _getPaymentStatusColor(payment['status']),
+                                                            color: Colors.green,
                                                           ),
                                                         ),
                                                       ),
-                                                    ),
-                                                  ],
-                                                );
-                                              }).toList(),
+                                                      DataCell(
+                                                        Column(
+                                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                                          mainAxisAlignment: MainAxisAlignment.center,
+                                                          children: [
+                                                            const SizedBox(height: 2),
+                                                            Text(
+                                                              'ID: ${payment['shop_id']?.toString() ?? 'N/A'}',
+                                                              style: TextStyle(
+                                                                fontSize: 12,
+                                                                color: Colors.grey.shade600,
+                                                              ),
+                                                            ),
+                                                            const SizedBox(height: 2),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                      DataCell(
+                                                        Column(
+                                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                                          mainAxisAlignment: MainAxisAlignment.center,
+                                                          children: [
+                                                            const SizedBox(height: 2),
+                                                            Text(
+                                                              'ID: ${payment['user_id']?.toString() ?? 'N/A'}',
+                                                              style: TextStyle(
+                                                                fontSize: 12,
+                                                                color: Colors.grey.shade600,
+                                                              ),
+                                                            ),
+                                                            const SizedBox(height: 2),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                      DataCell(
+                                                        Column(
+                                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                                          mainAxisAlignment: MainAxisAlignment.center,
+                                                          children: [
+                                                            Text(
+                                                              _formatPaymentDate(payment['payment_date'] ?? payment['created_at']),
+                                                              style: const TextStyle(fontWeight: FontWeight.w500),
+                                                            ),
+                                                            const SizedBox(height: 2),
+                                                            Text(
+                                                              _formatPaymentTime(payment['payment_date'] ?? payment['created_at']),
+                                                              style: TextStyle(
+                                                                fontSize: 12,
+                                                                color: Colors.grey.shade600,
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  );
+                                                }).toList(),
+                                              ),
                                             ),
                                           ),
-                                        ),
                             ),
                           ],
                         ),
