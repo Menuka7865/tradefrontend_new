@@ -151,15 +151,15 @@ class _PaymentManagementWebState extends State<PaymentManagementWeb> {
       String query = searchController.text.toLowerCase();
       filteredPayments = allPayments.where((payment) {
         bool matchesSearch = query.isEmpty ||
-            (payment['shop_name']?.toString() ?? '').toLowerCase().contains(query) ||
-            (payment['collector_name']?.toString() ?? '').toLowerCase().contains(query) ||
-            (payment['amount']?.toString() ?? '').toLowerCase().contains(query) ||
+            (payment['shop_id']?.toString() ?? '').toLowerCase().contains(query) ||
+            (payment['user_id']?.toString() ?? '').toLowerCase().contains(query) ||
+            (payment['payment_amount']?.toString() ?? '').toLowerCase().contains(query) ||
             (payment['payment_id']?.toString() ?? '').toLowerCase().contains(query);
 
         bool matchesDateRange = true;
         if (startDate != null && endDate != null) {
           try {
-            DateTime paymentDate = DateTime.parse(payment['payment_date'] ?? payment['created_at'] ?? '');
+            DateTime paymentDate = DateTime.parse(payment['payment_date'] ?? payment['actual_payment_time'] ?? '');
             matchesDateRange = paymentDate.isAfter(startDate!.subtract(const Duration(days: 1))) &&
                 paymentDate.isBefore(endDate!.add(const Duration(days: 1)));
           } catch (e) {
@@ -172,8 +172,8 @@ class _PaymentManagementWebState extends State<PaymentManagementWeb> {
       // Sort by payment date (newest first)
       filteredPayments.sort((a, b) {
         try {
-          DateTime dateA = DateTime.parse(a['payment_date'] ?? a['created_at'] ?? '');
-          DateTime dateB = DateTime.parse(b['payment_date'] ?? b['created_at'] ?? '');
+          DateTime dateA = DateTime.parse(a['payment_date'] ?? a['actual_payment_time'] ?? '');
+          DateTime dateB = DateTime.parse(b['payment_date'] ?? b['actual_payment_time'] ?? '');
           return dateB.compareTo(dateA);
         } catch (e) {
           return 0;
@@ -767,7 +767,7 @@ class _PaymentManagementWebState extends State<PaymentManagementWeb> {
                                                     ),
                                                     DataCell(
                                                       Text(
-                                                        _formatCurrency(payment['amount']),
+                                                        _formatCurrency(payment['payment_amount']),
                                                         style: const TextStyle(
                                                           fontWeight: FontWeight.w600,
                                                           color: Colors.green,
@@ -779,10 +779,10 @@ class _PaymentManagementWebState extends State<PaymentManagementWeb> {
                                                         crossAxisAlignment: CrossAxisAlignment.start,
                                                         mainAxisAlignment: MainAxisAlignment.center,
                                                         children: [
-                                                          Text(
-                                                            payment['shop_name']?.toString() ?? 'Unknown Shop',
-                                                            style: const TextStyle(fontWeight: FontWeight.w500),
-                                                          ),
+                                                          // Text(
+                                                          //   payment['shop_id']?.toString() ?? 'Unknown Shop',
+                                                          //   style: const TextStyle(fontWeight: FontWeight.w500),
+                                                          // ),
                                                           const SizedBox(height: 2),
                                                           Text(
                                                             'ID: ${payment['shop_id']?.toString() ?? 'N/A'}',
@@ -792,13 +792,13 @@ class _PaymentManagementWebState extends State<PaymentManagementWeb> {
                                                             ),
                                                           ),
                                                           const SizedBox(height: 2),
-                                                          Text(
-                                                            'BR: ${payment['shop_br_number']?.toString() ?? payment['br_number']?.toString() ?? 'N/A'}',
-                                                            style: TextStyle(
-                                                              fontSize: 11,
-                                                              color: Colors.grey.shade500,
-                                                            ),
-                                                          ),
+                                                          // Text(
+                                                          //   'BR: ${payment['shop_br_number']?.toString() ?? payment['br_number']?.toString() ?? 'N/A'}',
+                                                          //   style: TextStyle(
+                                                          //     fontSize: 11,
+                                                          //     color: Colors.grey.shade500,
+                                                          //   ),
+                                                          // ),
                                                         ],
                                                       ),
                                                     ),
@@ -807,26 +807,26 @@ class _PaymentManagementWebState extends State<PaymentManagementWeb> {
                                                         crossAxisAlignment: CrossAxisAlignment.start,
                                                         mainAxisAlignment: MainAxisAlignment.center,
                                                         children: [
-                                                          Text(
-                                                            payment['collector_name']?.toString() ?? 'Unknown Collector',
-                                                            style: const TextStyle(fontWeight: FontWeight.w500),
-                                                          ),
+                                                          // Text(
+                                                          //   payment['collector_name']?.toString() ?? 'Unknown Collector',
+                                                          //   style: const TextStyle(fontWeight: FontWeight.w500),
+                                                          // ),
                                                           const SizedBox(height: 2),
                                                           Text(
-                                                            'ID: ${payment['collector_id']?.toString() ?? 'N/A'}',
+                                                            'ID: ${payment['user_id']?.toString() ?? 'N/A'}',
                                                             style: TextStyle(
                                                               fontSize: 12,
                                                               color: Colors.grey.shade600,
                                                             ),
                                                           ),
                                                           const SizedBox(height: 2),
-                                                          Text(
-                                                            'Phone: ${payment['collector_phone']?.toString() ?? 'N/A'}',
-                                                            style: TextStyle(
-                                                              fontSize: 11,
-                                                              color: Colors.grey.shade500,
-                                                            ),
-                                                          ),
+                                                          // Text(
+                                                          //   'Phone: ${payment['collector_phone']?.toString() ?? 'N/A'}',
+                                                          //   style: TextStyle(
+                                                          //     fontSize: 11,
+                                                          //     color: Colors.grey.shade500,
+                                                          //   ),
+                                                          // ),
                                                         ],
                                                       ),
                                                     ),

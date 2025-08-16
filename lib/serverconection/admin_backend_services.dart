@@ -473,44 +473,142 @@ static Future<Map<String, dynamic>> getmonthlypayment() async {
     }
   }
 static Future<Map<String, dynamic>> getPayments({
-  DateTime? startDate,
-  DateTime? endDate,
-}) async {
-  try {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString("auth_token");
+    DateTime? startDate,
+    DateTime? endDate,
+    String? search,
+    String? status,
+    int? page,
+    int? perPage,
+  }) async {
+    final token = await _getToken();
+    final id = await getUserId();
     
-    Map<String, dynamic> queryParams = {};
+    final url = Uri.parse(baseUrl);
+    
+    // Prepare request body
+    Map<String, dynamic> requestBody = {
+      "type": "list_all_payments",
+      "loged_user_id": id?.toString() ?? "",
+    };
+
+    // Add optional parameters
     if (startDate != null) {
-     queryParams['start_date'] = startDate.toIso8601String();
-   }
-   if (endDate != null) {
-     queryParams['end_date'] = endDate.toIso8601String();
-   }
+      requestBody["start_date"] = startDate.toIso8601String();
+    }
+    if (endDate != null) {
+      requestBody["end_date"] = endDate.toIso8601String();
+    }
+    if (search != null && search.isNotEmpty) {
+      requestBody["search"] = search;
+    }
+    if (status != null && status.isNotEmpty) {
+      requestBody["status"] = status;
+    }
+    if (page != null) {
+      requestBody["page"] = page;
+    }
+    if (perPage != null) {
+      requestBody["per_page"] = perPage;
+    }
 
-   final response = await http.get(
-     Uri.parse('$baseUrl/admin/payments').replace(queryParameters: queryParams),
-     headers: {
-       'Content-Type': 'application/json',
-       'Authorization': 'Bearer $token',
-     },
-   );
+    final body = jsonEncode(requestBody);
 
-   if (response.statusCode == 200) {
-     return json.decode(response.body);
-   } else {
-     return {
-       'status': false,
-       'Message': 'Failed to load payments: ${response.statusCode}',
-     };
-   }
- } catch (e) {
-   return {
-     'status': false,
-     'Message': 'Error loading payments: $e',
-   };
- }
-}
+    try {
+      print("getPayments URL: $url");
+      print("getPayments Request Body: $body");
+
+      final response = await http.post(
+        url,
+        body: body,
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      ).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw Exception('Request timeout - Please check your internet connection');
+        },
+      );
+
+      print("getPayments Status Code: ${response.statusCode}");
+      print("getPayments Response Body: ${response.body}");
+
+      // Handle different HTTP status codes
+      if (response.statusCode == 401) {
+        return {
+          "status": false, 
+          "Message": "Unauthorized - Invalid token. Please log in again"
+        };
+      }
+
+      if (response.statusCode == 403) {
+        return {
+          "status": false, 
+          "Message": "Access forbidden - Insufficient permissions"
+        };
+      }
+
+      if (response.statusCode == 404) {
+        return {
+          "status": false, 
+          "Message": "API endpoint not found"
+        };
+      }
+
+      if (response.statusCode == 500) {
+        return {
+          "status": false, 
+          "Message": "Server error - Please try again later"
+        };
+      }
+
+      // Try to decode the response
+      try {
+        final decodedResponse = jsonDecode(response.body);
+        
+        // Handle successful response
+        if (response.statusCode == 200) {
+          return decodedResponse;
+        } else {
+          // Handle other status codes with decoded response
+          return {
+            "status": false,
+            "Message": decodedResponse['message'] ?? 
+                      decodedResponse['Message'] ?? 
+                      "Request failed with status: ${response.statusCode}"
+          };
+        }
+      } catch (jsonError) {
+        print("JSON decode error: $jsonError");
+        return {
+          "status": false,
+          "Message": "Invalid response format from server"
+        };
+      }
+
+    } catch (e) {
+      print("getPayments API Error: $e");
+      
+      // Handle specific error types
+      String errorMessage;
+      if (e.toString().contains('timeout')) {
+        errorMessage = "Request timeout - Please check your internet connection";
+      } else if (e.toString().contains('SocketException')) {
+        errorMessage = "Network error - Please check your internet connection";
+      } else if (e.toString().contains('HandshakeException')) {
+        errorMessage = "SSL connection error - Please try again";
+      } else {
+        errorMessage = "Connection error: ${e.toString()}";
+      }
+      
+      return {
+        "status": false, 
+        "Message": errorMessage
+      };
+    }
+  }
+
 
 
 }

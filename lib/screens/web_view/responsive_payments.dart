@@ -33,7 +33,7 @@ class ResponsivePayments extends StatelessWidget {
     if (screenWidth >= 1200) {
       return const PaymentManagementWeb();
     } else {
-      return const PaymentManagementMobile();
+      return const PaymentManagementResponsive();
     }
   }
 }
@@ -52,10 +52,10 @@ class AdaptiveCollectorScreen extends StatelessWidget {
           return const PaymentManagementWeb();
         } else if (constraints.maxWidth >= 600) {
           // Tablet layout - using mobile view for tablets
-          return const PaymentManagementMobile();
+          return const PaymentManagementResponsive();
         } else {
           // Mobile layout
-          return const PaymentManagementMobile();
+          return const PaymentManagementResponsive();
         }
       },
     );
